@@ -12,8 +12,23 @@ import DevicePropertyPanel from './components/DevicePropertyPanel';
 import type { RoomConfig } from './utils/floorPlanGenerator';
 import type { PlacedDevice, ViewportTransform, Connection, DrawingWire } from './types/devices';
 
-// SVG Drag preview component - shows the actual detector icon
-function DeviceDragPreview() {
+// SVG Drag preview component - shows the device icon
+function DeviceDragPreview({ deviceTypeId }: { deviceTypeId: string | null }) {
+  if (deviceTypeId === 'loop-driver') {
+    // Loop driver preview - rectangle with 2 terminals
+    return (
+      <svg width="60" height="40" viewBox="-30 -20 60 40" className="drop-shadow-lg">
+        <rect x="-28" y="-18" width="56" height="36" rx="3" fill="#F8FAFC" stroke="#1E293B" strokeWidth="2" />
+        <rect x="-20" y="-10" width="40" height="20" rx="2" fill="#E2E8F0" stroke="#64748B" strokeWidth="1.5" />
+        <text x="0" y="4" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#334155">LD</text>
+        {/* Terminals - 1 top centered, 1 bottom centered */}
+        <circle cx="0" cy="-18" r="4" fill="#F97316" stroke="#C2410C" strokeWidth="1.5" />
+        <circle cx="0" cy="18" r="4" fill="#38BDF8" stroke="#0284C7" strokeWidth="1.5" />
+      </svg>
+    );
+  }
+
+  // Default - detector preview (circle)
   return (
     <svg width="60" height="60" viewBox="-30 -30 60 60" className="drop-shadow-lg">
       {/* Outer circle */}
@@ -252,18 +267,26 @@ function App() {
       const deviceType = getDeviceType(deviceTypeId);
       if (!deviceType) return;
 
+      // Determine the device type label based on category
+      const getDeviceTypeLabel = () => {
+        if (deviceTypeId === 'loop-driver') return 'BSD-1000';
+        if (deviceTypeId === 'autroguard-base') return 'AG socket';
+        return deviceType.name;
+      };
+
       const newDevice: PlacedDevice = {
         instanceId: generateInstanceId(),
         typeId: deviceTypeId,
         x: finalX,
         y: finalY,
         rotation: 0,
-        // Initialize new properties for AutroGuard socket
-        deviceType: 'AG socket',
+        // Initialize device properties
+        deviceType: getDeviceTypeLabel(),
         deviceId: null,
         cAddress: null,
         label: '',
         sn: generateSerialNumber(),
+        ipAddress: deviceTypeId === 'loop-driver' ? '' : undefined,
       };
 
       setPlacedDevices(prev => [...prev, newDevice]);
@@ -369,8 +392,20 @@ function App() {
     }
   };
 
-  // Check if we're actively dragging
+  // Check if we're actively dragging and get the device type being dragged
   const isDragging = activeDragId !== null;
+  const getDraggedDeviceTypeId = (): string | null => {
+    if (!activeDragId) return null;
+    if (activeDragId.startsWith('palette-')) {
+      return activeDragId.replace('palette-', '');
+    }
+    if (activeDragId.startsWith('placed-')) {
+      const instanceId = activeDragId.replace('placed-', '');
+      const device = placedDevices.find(d => d.instanceId === instanceId);
+      return device?.typeId || null;
+    }
+    return null;
+  };
 
   return (
     <DndContext
@@ -415,6 +450,7 @@ function App() {
               selectedDeviceId={selectedDeviceId}
               activeDragId={activeDragId}
               projectionPosition={projectionPosition}
+              projectionDeviceTypeId={getDraggedDeviceTypeId()}
               onTransformChange={handleTransformChange}
               onDeviceClick={handleDeviceClick}
               connections={connections}
@@ -449,7 +485,7 @@ function App() {
 
       {/* Drag Overlay - shows the device icon while dragging */}
       <DragOverlay dropAnimation={null}>
-        {isDragging && <DeviceDragPreview />}
+        {isDragging && <DeviceDragPreview deviceTypeId={getDraggedDeviceTypeId()} />}
       </DragOverlay>
     </DndContext>
   );

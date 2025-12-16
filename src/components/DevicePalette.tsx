@@ -45,6 +45,12 @@ function DraggableDeviceItem({ deviceType }: DraggableDeviceItemProps) {
                     icon: 'text-green-400',
                     border: 'border-green-500/30',
                 };
+            case 'controller':
+                return {
+                    bg: 'bg-cyan-500/20',
+                    icon: 'text-cyan-400',
+                    border: 'border-cyan-500/30',
+                };
         }
     };
 
@@ -64,18 +70,33 @@ function DraggableDeviceItem({ deviceType }: DraggableDeviceItemProps) {
                        transition-all duration-200 border border-slate-600/50"
         >
             <div className="flex items-center gap-3">
-                {/* Device icon */}
+                {/* Device icon - different shape based on category */}
                 <div className={`w-10 h-10 ${styles.bg} rounded-lg flex items-center justify-center ${styles.border} border`}>
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className={`w-5 h-5 ${styles.icon}`}
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <circle cx="12" cy="12" r="9" strokeWidth="2" />
-                        <circle cx="12" cy="12" r="4" strokeWidth="2" />
-                    </svg>
+                    {deviceType.category === 'controller' ? (
+                        // Rectangle icon for controller/loop driver
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className={`w-6 h-4 ${styles.icon}`}
+                            fill="none"
+                            viewBox="0 0 24 16"
+                            stroke="currentColor"
+                        >
+                            <rect x="1" y="1" width="22" height="14" rx="2" strokeWidth="2" />
+                            <text x="12" y="11" textAnchor="middle" fontSize="8" fill="currentColor" stroke="none">LD</text>
+                        </svg>
+                    ) : (
+                        // Circle icon for detectors
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className={`w-5 h-5 ${styles.icon}`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <circle cx="12" cy="12" r="9" strokeWidth="2" />
+                            <circle cx="12" cy="12" r="4" strokeWidth="2" />
+                        </svg>
+                    )}
                 </div>
 
                 <div className="flex-1 min-w-0">

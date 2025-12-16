@@ -7,6 +7,7 @@ interface DeviceOverlayProps {
     selectedDeviceId?: string | null;
     activeDragId?: string | null;
     projectionPosition?: { x: number; y: number } | null;
+    projectionDeviceTypeId?: string | null;
     viewportTransform: ViewportTransform;
     onDeviceClick?: (instanceId: string) => void;
     connections?: Connection[];
@@ -56,7 +57,8 @@ function DraggableDevice({
     const dragOffsetX = transform?.x ?? 0;
     const dragOffsetY = transform?.y ?? 0;
 
-    const size = 50 * scale;
+    const sizeX = deviceType.width * scale;
+    const sizeY = deviceType.height * scale;
 
     return (
         <div
@@ -69,10 +71,10 @@ function DraggableDevice({
             }}
             style={{
                 position: 'absolute',
-                left: screenX - size / 2 + dragOffsetX,
-                top: screenY - size / 2 + dragOffsetY,
-                width: size,
-                height: size,
+                left: screenX - sizeX / 2 + dragOffsetX,
+                top: screenY - sizeY / 2 + dragOffsetY,
+                width: sizeX,
+                height: sizeY,
                 cursor: 'grab',
                 opacity: isDragging ? 0.5 : 1,
                 zIndex: isSelected ? 10 : 1,
@@ -81,32 +83,107 @@ function DraggableDevice({
         >
             {/* Device SVG */}
             <svg
-                width={size}
-                height={size}
-                viewBox="-30 -30 60 60"
+                width={sizeX}
+                height={sizeY}
+                viewBox={`${-deviceType.width / 2} ${-deviceType.height / 2} ${deviceType.width} ${deviceType.height}`}
                 style={{ overflow: 'visible' }}
             >
-                {/* Selection ring */}
-                {isSelected && (
-                    <circle
-                        r="28"
-                        fill="none"
-                        stroke="#3B82F6"
-                        strokeWidth="2"
-                        strokeDasharray="4 2"
-                    />
-                )}
+                {/* Render based on device type */}
+                {device.typeId === 'loop-driver' ? (
+                    <>
+                        {/* Selection ring for rectangular device */}
+                        {isSelected && (
+                            <rect
+                                x={-deviceType.width / 2 - 4}
+                                y={-deviceType.height / 2 - 4}
+                                width={deviceType.width + 8}
+                                height={deviceType.height + 8}
+                                rx="6"
+                                fill="none"
+                                stroke="#3B82F6"
+                                strokeWidth="2"
+                                strokeDasharray="4 2"
+                            />
+                        )}
 
-                {/* Device base */}
-                <circle r="25" fill="#F8FAFC" stroke="#1E293B" strokeWidth="2" />
-                <circle r="16" fill="#E2E8F0" stroke="#64748B" strokeWidth="1.5" />
-                <circle r="6" fill="#CBD5E1" stroke="#94A3B8" strokeWidth="1" />
-                <circle r="2" fill="#64748B" />
+                        {/* Loop Driver body - outer rectangle */}
+                        <rect
+                            x={-deviceType.width / 2}
+                            y={-deviceType.height / 2}
+                            width={deviceType.width}
+                            height={deviceType.height}
+                            rx="4"
+                            fill="#F8FAFC"
+                            stroke="#1E293B"
+                            strokeWidth="2"
+                        />
+
+                        {/* Inner rectangle */}
+                        <rect
+                            x={-deviceType.width / 2 + 8}
+                            y={-deviceType.height / 2 + 8}
+                            width={deviceType.width - 16}
+                            height={deviceType.height - 16}
+                            rx="3"
+                            fill="#E2E8F0"
+                            stroke="#64748B"
+                            strokeWidth="1.5"
+                        />
+
+                        {/* LD Label */}
+                        <text
+                            x="0"
+                            y="4"
+                            textAnchor="middle"
+                            fontSize="14"
+                            fontWeight="bold"
+                            fill="#334155"
+                            style={{ pointerEvents: 'none' }}
+                        >
+                            LD
+                        </text>
+                    </>
+                ) : (
+                    <>
+                        {/* Selection ring for circular device */}
+                        {isSelected && (
+                            <circle
+                                r="28"
+                                fill="none"
+                                stroke="#3B82F6"
+                                strokeWidth="2"
+                                strokeDasharray="4 2"
+                            />
+                        )}
+
+                        {/* Device base - circles */}
+                        <circle r="25" fill="#F8FAFC" stroke="#1E293B" strokeWidth="2" />
+                        <circle r="16" fill="#E2E8F0" stroke="#64748B" strokeWidth="1.5" />
+                        <circle r="6" fill="#CBD5E1" stroke="#94A3B8" strokeWidth="1" />
+                        <circle r="2" fill="#64748B" />
+                    </>
+                )}
 
                 {/* Terminals */}
                 {deviceType.terminals.map((terminal) => {
-                    const svgtX = terminal.relativeX * 50;
-                    const svgtY = terminal.relativeY * 50;
+                    const svgtX = terminal.relativeX * deviceType.width;
+                    const svgtY = terminal.relativeY * deviceType.height;
+
+                    // Get terminal color based on terminal type for loop driver
+                    const getTerminalColor = () => {
+                        if (device.typeId === 'loop-driver') {
+                            if (terminal.id.startsWith('loop-in')) {
+                                return { fill: '#F97316', stroke: '#C2410C' }; // Orange for loop in
+                            } else if (terminal.id.startsWith('loop-out')) {
+                                return { fill: '#38BDF8', stroke: '#0284C7' }; // Light blue for loop out
+                            } else if (terminal.id === 'controller') {
+                                return { fill: '#3B82F6', stroke: '#1D4ED8' }; // Dark blue for controller
+                            }
+                        }
+                        return { fill: '#FBBF24', stroke: '#B45309' }; // Yellow default
+                    };
+
+                    const colors = getTerminalColor();
 
                     return (
                         <g key={terminal.id} transform={`translate(${svgtX}, ${svgtY})`}>
@@ -125,7 +202,7 @@ function DraggableDevice({
                                 }}
                             />
                             {/* Visible terminal */}
-                            <circle r="5" fill="#FBBF24" stroke="#B45309" strokeWidth="1.5" style={{ pointerEvents: 'none' }} />
+                            <circle r="5" fill={colors.fill} stroke={colors.stroke} strokeWidth="1.5" style={{ pointerEvents: 'none' }} />
                         </g>
                     );
                 })}
@@ -139,41 +216,70 @@ function ProjectionGuide({
     x,
     y,
     viewportTransform,
+    deviceTypeId,
 }: {
     x: number;
     y: number;
     viewportTransform: ViewportTransform;
+    deviceTypeId?: string;
 }) {
     const { scale, positionX, positionY } = viewportTransform;
     const screenX = x * scale + positionX;
     const screenY = y * scale + positionY;
-    const size = 60 * scale;
+
+    // Different sizes for different device types
+    const isLoopDriver = deviceTypeId === 'loop-driver';
+    const sizeX = isLoopDriver ? 70 * scale : 60 * scale;
+    const sizeY = isLoopDriver ? 45 * scale : 60 * scale;
 
     return (
         <div
             style={{
                 position: 'absolute',
-                left: screenX - size / 2,
-                top: screenY - size / 2,
-                width: size,
-                height: size,
+                left: screenX - sizeX / 2,
+                top: screenY - sizeY / 2,
+                width: sizeX,
+                height: sizeY,
                 pointerEvents: 'none',
             }}
         >
-            <svg width={size} height={size} viewBox="-30 -30 60 60">
-                <circle
-                    r="28"
-                    fill="none"
-                    stroke="#3B82F6"
-                    strokeWidth="2"
-                    strokeDasharray="6 3"
-                    opacity="0.7"
-                />
-                <circle r="25" fill="#3B82F6" opacity="0.15" />
-                <line x1="-15" y1="0" x2="15" y2="0" stroke="#3B82F6" strokeWidth="1" opacity="0.5" />
-                <line x1="0" y1="-15" x2="0" y2="15" stroke="#3B82F6" strokeWidth="1" opacity="0.5" />
-                <circle r="3" fill="#3B82F6" opacity="0.8" />
-            </svg>
+            {isLoopDriver ? (
+                // Rectangular projection for loop driver
+                <svg width={sizeX} height={sizeY} viewBox="-35 -22.5 70 45">
+                    <rect
+                        x="-32"
+                        y="-20"
+                        width="64"
+                        height="40"
+                        rx="4"
+                        fill="none"
+                        stroke="#3B82F6"
+                        strokeWidth="2"
+                        strokeDasharray="6 3"
+                        opacity="0.7"
+                    />
+                    <rect x="-30" y="-18" width="60" height="36" rx="3" fill="#3B82F6" opacity="0.15" />
+                    <line x1="-15" y1="0" x2="15" y2="0" stroke="#3B82F6" strokeWidth="1" opacity="0.5" />
+                    <line x1="0" y1="-10" x2="0" y2="10" stroke="#3B82F6" strokeWidth="1" opacity="0.5" />
+                    <circle r="3" fill="#3B82F6" opacity="0.8" />
+                </svg>
+            ) : (
+                // Circular projection for detectors
+                <svg width={sizeX} height={sizeY} viewBox="-30 -30 60 60">
+                    <circle
+                        r="28"
+                        fill="none"
+                        stroke="#3B82F6"
+                        strokeWidth="2"
+                        strokeDasharray="6 3"
+                        opacity="0.7"
+                    />
+                    <circle r="25" fill="#3B82F6" opacity="0.15" />
+                    <line x1="-15" y1="0" x2="15" y2="0" stroke="#3B82F6" strokeWidth="1" opacity="0.5" />
+                    <line x1="0" y1="-15" x2="0" y2="15" stroke="#3B82F6" strokeWidth="1" opacity="0.5" />
+                    <circle r="3" fill="#3B82F6" opacity="0.8" />
+                </svg>
+            )}
         </div>
     );
 }
@@ -206,6 +312,7 @@ export default function DeviceOverlay({
     selectedDeviceId,
     activeDragId,
     projectionPosition,
+    projectionDeviceTypeId,
     viewportTransform,
     onDeviceClick,
     onWireStart,
@@ -236,8 +343,9 @@ export default function DeviceOverlay({
             devScreenY += dragDelta.y;
         }
 
-        const worldOffsetX = terminal.relativeX * 50;
-        const worldOffsetY = terminal.relativeY * 50;
+        // Use actual device type dimensions for terminal offset calculation
+        const worldOffsetX = terminal.relativeX * type.width;
+        const worldOffsetY = terminal.relativeY * type.height;
 
         return {
             x: devScreenX + worldOffsetX * scale,
@@ -309,6 +417,7 @@ export default function DeviceOverlay({
                     x={projectionPosition.x}
                     y={projectionPosition.y}
                     viewportTransform={viewportTransform}
+                    deviceTypeId={projectionDeviceTypeId || undefined}
                 />
             )}
 

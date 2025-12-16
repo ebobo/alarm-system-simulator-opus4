@@ -19,7 +19,7 @@ export interface TerminalDefinition {
 export interface DeviceType {
     id: string;
     name: string;
-    category: 'detector' | 'sounder' | 'io' | 'mcp';
+    category: 'detector' | 'sounder' | 'io' | 'mcp' | 'controller';
     description: string;
     width: number;               // Device width in plan units
     height: number;              // Device height in plan units
@@ -37,11 +37,13 @@ export interface PlacedDevice {
     y: number;                   // Plan Y coordinate (center of device)
     rotation: number;            // 0, 90, 180, or 270 degrees
     // Device properties for AutroGuard socket
-    deviceType: string;          // Always "AG socket" for AutroGuard devices
+    deviceType: string;          // "AG socket" for AutroGuard, "BSD-1000" for Loop Driver
     deviceId: number | null;     // uint8 (0-255), null when empty
     cAddress: number | null;     // uint8 (0-255), null when empty
     label: string;               // User-editable label, max 20 characters
-    sn: number;                  // Serial number: random 32-bit number
+    sn: number;                  // Serial number: random 48-bit number
+    // Loop Driver specific
+    ipAddress?: string;          // IPv4 address for Loop Driver, editable
 }
 
 export interface ViewportTransform {
@@ -80,6 +82,15 @@ const AUTROGUARD_TERMINALS: TerminalDefinition[] = [
     { id: 'left', pairIndex: 3, polarity: '+', relativeX: -0.45, relativeY: 0, label: 'L' },
 ];
 
+// Terminal positions for Loop Driver:
+// 1 terminal on top (loop in), 1 on bottom (loop out), centered
+const LOOP_DRIVER_TERMINALS: TerminalDefinition[] = [
+    // Top connector - Loop In (orange)
+    { id: 'loop-in', pairIndex: 0, polarity: '+', relativeX: 0, relativeY: -0.5, label: 'IN' },
+    // Bottom connector - Loop Out (light blue)
+    { id: 'loop-out', pairIndex: 1, polarity: '+', relativeX: 0, relativeY: 0.5, label: 'OUT' },
+];
+
 /**
  * Registry of all available device types
  */
@@ -92,6 +103,15 @@ export const DEVICE_TYPES: Record<string, DeviceType> = {
         width: 50,
         height: 50,
         terminals: AUTROGUARD_TERMINALS,
+    },
+    'loop-driver': {
+        id: 'loop-driver',
+        name: 'Loop Driver',
+        category: 'controller',
+        description: 'Loop driver module with loop in/out and controller connection',
+        width: 60,
+        height: 35,
+        terminals: LOOP_DRIVER_TERMINALS,
     },
 };
 

@@ -11,6 +11,7 @@ interface FloorPlanViewerProps {
     selectedDeviceId?: string | null;
     activeDragId?: string | null;
     projectionPosition?: { x: number; y: number } | null;
+    projectionDeviceTypeId?: string | null;
     onTransformChange?: (transform: ViewportTransform) => void;
     onDeviceClick?: (instanceId: string) => void;
     connections: Connection[];
@@ -65,6 +66,7 @@ export default function FloorPlanViewer({
     selectedDeviceId,
     activeDragId,
     projectionPosition,
+    projectionDeviceTypeId,
     onTransformChange,
     onDeviceClick,
     connections,
@@ -152,6 +154,7 @@ export default function FloorPlanViewer({
                 selectedDeviceId={selectedDeviceId}
                 activeDragId={activeDragId}
                 projectionPosition={projectionPosition}
+                projectionDeviceTypeId={projectionDeviceTypeId}
                 viewportTransform={localTransform}
                 onDeviceClick={onDeviceClick}
                 connections={connections}
