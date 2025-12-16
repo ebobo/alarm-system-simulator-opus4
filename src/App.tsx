@@ -7,7 +7,8 @@ import DevicePalette from './components/DevicePalette';
 import ConfigModal from './components/ConfigModal';
 import { generateFloorPlan, defaultConfig } from './utils/floorPlanGenerator';
 import { useCoordinates } from './hooks/useCoordinates';
-import { generateInstanceId, getDeviceType } from './types/devices';
+import { generateInstanceId, generateSerialNumber, getDeviceType } from './types/devices';
+import DevicePropertyPanel from './components/DevicePropertyPanel';
 import type { RoomConfig } from './utils/floorPlanGenerator';
 import type { PlacedDevice, ViewportTransform, Connection, DrawingWire } from './types/devices';
 
@@ -257,6 +258,12 @@ function App() {
         x: finalX,
         y: finalY,
         rotation: 0,
+        // Initialize new properties for AutroGuard socket
+        deviceType: 'AG socket',
+        deviceId: null,
+        cAddress: null,
+        label: '',
+        sn: generateSerialNumber(),
       };
 
       setPlacedDevices(prev => [...prev, newDevice]);
@@ -278,6 +285,15 @@ function App() {
   const handleDeviceClick = (instanceId: string) => {
     setSelectedDeviceId(prev => (prev === instanceId ? null : instanceId));
   };
+
+  // Handle device property updates
+  const handleUpdateDevice = useCallback((updatedDevice: PlacedDevice) => {
+    setPlacedDevices(prev =>
+      prev.map(device =>
+        device.instanceId === updatedDevice.instanceId ? updatedDevice : device
+      )
+    );
+  }, []);
 
   // Handle wire start
   const handleWireStart = (deviceId: string, terminalId: string, e: React.PointerEvent) => {
@@ -411,8 +427,16 @@ function App() {
           </div>
         </div>
 
-        {/* Right Sidebar - Device Palette */}
-        <DevicePalette />
+        {/* Right Sidebar - Device Palette and Property Panel */}
+        <div className="w-64 flex flex-col bg-gradient-to-b from-slate-800 to-slate-900 border-l border-slate-700">
+          <div className="flex-1 overflow-hidden">
+            <DevicePalette />
+          </div>
+          <DevicePropertyPanel
+            selectedDevice={placedDevices.find(d => d.instanceId === selectedDeviceId) || null}
+            onUpdateDevice={handleUpdateDevice}
+          />
+        </div>
 
         {/* Config Modal */}
         <ConfigModal

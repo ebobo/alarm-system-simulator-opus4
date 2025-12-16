@@ -94,7 +94,7 @@ export default function DevicePalette() {
     const deviceTypes = Object.values(DEVICE_TYPES);
 
     return (
-        <div className="w-64 bg-gradient-to-b from-slate-800 to-slate-900 text-white flex flex-col border-l border-slate-700">
+        <div className="flex-1 flex flex-col text-white overflow-hidden">
             {/* Header */}
             <div className="p-4 border-b border-slate-700">
                 <div className="flex items-center gap-2">

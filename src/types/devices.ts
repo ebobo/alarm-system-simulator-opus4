@@ -36,6 +36,12 @@ export interface PlacedDevice {
     x: number;                   // Plan X coordinate (center of device)
     y: number;                   // Plan Y coordinate (center of device)
     rotation: number;            // 0, 90, 180, or 270 degrees
+    // Device properties for AutroGuard socket
+    deviceType: string;          // Always "AG socket" for AutroGuard devices
+    deviceId: number | null;     // uint8 (0-255), null when empty
+    cAddress: number | null;     // uint8 (0-255), null when empty
+    label: string;               // User-editable label, max 20 characters
+    sn: number;                  // Serial number: random 32-bit number
 }
 
 export interface ViewportTransform {
@@ -102,3 +108,13 @@ export function getDeviceType(typeId: string): DeviceType | undefined {
 export function generateInstanceId(): string {
     return `device-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
+
+/**
+ * Generate random 48-bit serial number for AutroGuard devices
+ */
+export function generateSerialNumber(): number {
+    // Generate a random 48-bit unsigned integer (0 to 2^48 - 1)
+    // JavaScript can safely handle integers up to 2^53 - 1
+    return Math.floor(Math.random() * 0xFFFFFFFFFFFF);
+}
+
