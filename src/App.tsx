@@ -50,6 +50,9 @@ function App() {
   // Projection position (where the device will land)
   const [projectionPosition, setProjectionPosition] = useState<{ x: number; y: number } | null>(null);
 
+  // Alignment guides for snapping
+  const [alignmentGuides, setAlignmentGuides] = useState<{ horizontal: number | null; vertical: number | null }>({ horizontal: null, vertical: null });
+
   // Viewport state
   const [viewportTransform, setViewportTransform] = useState<ViewportTransform>({
     scale: 1,
@@ -140,9 +143,41 @@ function App() {
     ) {
       // Convert to plan coordinates
       const planCoords = screenToFloorPlan(currentX, currentY, viewportTransform, containerRect);
-      setProjectionPosition(planCoords);
+
+      // Calculate snapping
+      const SNAP_THRESHOLD = 5; // units in plan coordinates
+      let snappedX = planCoords.x;
+      let snappedY = planCoords.y;
+      let guideX: number | null = null;
+      let guideY: number | null = null;
+
+      // Find alignment candidates excluding the currently dragged device (if it exists)
+      const currentDragInstanceId = activeDragId?.startsWith('placed-') ? activeDragId.replace('placed-', '') : null;
+
+      for (const device of placedDevices) {
+        if (device.instanceId === currentDragInstanceId) continue;
+
+        // Horizontal alignment (match Y)
+        const distY = Math.abs(device.y - planCoords.y);
+        if (distY < SNAP_THRESHOLD) {
+          snappedY = device.y;
+          guideY = device.y;
+        }
+
+        // Vertical alignment (match X)
+        const distX = Math.abs(device.x - planCoords.x);
+        if (distX < SNAP_THRESHOLD) {
+          snappedX = device.x;
+          guideX = device.x;
+        }
+      }
+
+      setProjectionPosition({ x: snappedX, y: snappedY });
+      setAlignmentGuides({ horizontal: guideY, vertical: guideX });
+
     } else {
       setProjectionPosition(null);
+      setAlignmentGuides({ horizontal: null, vertical: null });
     }
   };
 
@@ -154,6 +189,7 @@ function App() {
     setActiveDragId(null);
     setProjectionPosition(null);
     setDragDelta(null);
+    setAlignmentGuides({ horizontal: null, vertical: null });
 
     const containerRect = getContainerRect();
     if (!containerRect) return;
@@ -185,6 +221,30 @@ function App() {
     // Convert to plan coordinates
     const planCoords = screenToFloorPlan(dropX, dropY, viewportTransform, containerRect);
 
+    // Apply snapping logic (same as handleDragMove)
+    const SNAP_THRESHOLD = 5;
+    let finalX = planCoords.x;
+    let finalY = planCoords.y;
+
+    // Calculate snapping if we have alignment candidates
+    const currentDragInstanceId = id.startsWith('placed-') ? id.replace('placed-', '') : null;
+
+    for (const device of placedDevices) {
+      if (device.instanceId === currentDragInstanceId) continue;
+
+      // Horizontal alignment (match Y)
+      const distY = Math.abs(device.y - planCoords.y);
+      if (distY < SNAP_THRESHOLD) {
+        finalY = device.y;
+      }
+
+      // Vertical alignment (match X)
+      const distX = Math.abs(device.x - planCoords.x);
+      if (distX < SNAP_THRESHOLD) {
+        finalX = device.x;
+      }
+    }
+
     if (id.startsWith('palette-')) {
       // Adding new device from palette
       const deviceTypeId = id.replace('palette-', '');
@@ -194,8 +254,8 @@ function App() {
       const newDevice: PlacedDevice = {
         instanceId: generateInstanceId(),
         typeId: deviceTypeId,
-        x: planCoords.x,
-        y: planCoords.y,
+        x: finalX,
+        y: finalY,
         rotation: 0,
       };
 
@@ -207,7 +267,7 @@ function App() {
       setPlacedDevices(prev =>
         prev.map(device =>
           device.instanceId === instanceId
-            ? { ...device, x: planCoords.x, y: planCoords.y }
+            ? { ...device, x: finalX, y: finalY }
             : device
         )
       );
@@ -245,22 +305,27 @@ function App() {
       return;
     }
 
-    // Check if connection already exists
-    const exists = connections.some(c =>
-      (c.fromDeviceId === drawingWire.startDeviceId && c.fromTerminalId === drawingWire.startTerminalId && c.toDeviceId === deviceId && c.toTerminalId === terminalId) ||
-      (c.toDeviceId === drawingWire.startDeviceId && c.toTerminalId === drawingWire.startTerminalId && c.fromDeviceId === deviceId && c.fromTerminalId === terminalId)
+    // Check if ANY connection already exists between these two devices
+    // The user requested: "one detetcor can only connetor to another detecor once"
+    const devicesAlreadyConnected = connections.some(c =>
+      (c.fromDeviceId === drawingWire.startDeviceId && c.toDeviceId === deviceId) ||
+      (c.fromDeviceId === deviceId && c.toDeviceId === drawingWire.startDeviceId)
     );
 
-    if (!exists) {
-      const newConnection: Connection = {
-        id: `conn-${Date.now()}`,
-        fromDeviceId: drawingWire.startDeviceId,
-        fromTerminalId: drawingWire.startTerminalId,
-        toDeviceId: deviceId,
-        toTerminalId: terminalId,
-      };
-      setConnections(prev => [...prev, newConnection]);
+    if (devicesAlreadyConnected) {
+      console.log("Devices already connected, skipping duplicate connection.");
+      setDrawingWire(null);
+      return;
     }
+
+    const newConnection: Connection = {
+      id: `conn-${Date.now()}`,
+      fromDeviceId: drawingWire.startDeviceId,
+      fromTerminalId: drawingWire.startTerminalId,
+      toDeviceId: deviceId,
+      toTerminalId: terminalId,
+    };
+    setConnections(prev => [...prev, newConnection]);
 
     setDrawingWire(null);
   };
@@ -341,6 +406,7 @@ function App() {
               onWireStart={handleWireStart}
               onWireEnd={handleWireEnd}
               dragDelta={dragDelta}
+              alignmentGuides={alignmentGuides}
             />
           </div>
         </div>

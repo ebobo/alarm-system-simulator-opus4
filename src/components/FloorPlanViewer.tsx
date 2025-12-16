@@ -18,6 +18,7 @@ interface FloorPlanViewerProps {
     onWireStart: (deviceId: string, terminalId: string, e: React.PointerEvent) => void;
     onWireEnd: (deviceId: string, terminalId: string) => void;
     dragDelta?: { x: number; y: number } | null;
+    alignmentGuides?: { horizontal: number | null; vertical: number | null };
 }
 
 function Controls() {
@@ -71,6 +72,7 @@ export default function FloorPlanViewer({
     onWireStart,
     onWireEnd,
     dragDelta,
+    alignmentGuides,
 }: FloorPlanViewerProps) {
     const transformRef = useRef<ReactZoomPanPinchRef>(null);
 
@@ -157,6 +159,7 @@ export default function FloorPlanViewer({
                 onWireStart={onWireStart}
                 onWireEnd={onWireEnd}
                 dragDelta={dragDelta}
+                alignmentGuides={alignmentGuides}
             />
 
             {/* Drop zone indicator */}

@@ -14,6 +14,7 @@ interface DeviceOverlayProps {
     onWireStart?: (deviceId: string, terminalId: string, e: React.PointerEvent) => void;
     onWireEnd?: (deviceId: string, terminalId: string) => void;
     dragDelta?: { x: number; y: number } | null;
+    alignmentGuides?: { horizontal: number | null; vertical: number | null };
 }
 
 // Draggable device rendered as HTML element
@@ -212,6 +213,7 @@ export default function DeviceOverlay({
     connections = [],
     drawingWire,
     dragDelta,
+    alignmentGuides,
 }: DeviceOverlayProps) {
     const { scale, positionX, positionY } = viewportTransform;
 
@@ -274,6 +276,31 @@ export default function DeviceOverlay({
                     const endY = drawingWire.endY * scale + positionY;
                     return <Wire startX={start.x} startY={start.y} endX={endX} endY={endY} isPreview={true} />;
                 })()}
+
+                {/* Alignment Guides */}
+                {alignmentGuides?.horizontal !== null && alignmentGuides?.horizontal !== undefined && (
+                    <line
+                        x1={0}
+                        y1={alignmentGuides.horizontal * scale + positionY}
+                        x2="100%"
+                        y2={alignmentGuides.horizontal * scale + positionY}
+                        stroke="#10B981"
+                        strokeWidth="1"
+                        strokeDasharray="4 2"
+                    />
+                )}
+                {alignmentGuides?.vertical !== null && alignmentGuides?.vertical !== undefined && (
+                    <line
+                        x1={alignmentGuides.vertical * scale + positionX}
+                        y1={0}
+                        x2={alignmentGuides.vertical * scale + positionX}
+                        y2="100%"
+                        stroke="#10B981"
+                        strokeWidth="1"
+                        strokeDasharray="4 2"
+                    />
+                )}
+
             </svg>
 
             {/* Projection guide */}
