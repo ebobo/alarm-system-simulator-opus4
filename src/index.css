@@ -14,3 +14,44 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* Device component styles */
+.device-group {
+  transition: transform 0.15s ease-out;
+}
+
+.device-group:hover .device-body {
+  stroke: #3B82F6;
+  stroke-width: 2.5;
+}
+
+.terminal-group:hover .terminal-body {
+  transform: scale(1.2);
+  stroke-width: 2;
+}
+
+.terminal-group {
+  transition: transform 0.1s ease-out;
+}
+
+/* Selection ring animation */
+.selection-ring {
+  animation: pulse-ring 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-ring {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Device overlay positioning */
+.device-overlay {
+  z-index: 10;
+}

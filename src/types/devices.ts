@@ -1,0 +1,86 @@
+// Device and terminal type definitions for fire alarm loop simulator
+
+/**
+ * Terminal definition relative to device center
+ * Positions are in range [-0.5, 0.5] relative to device size
+ */
+export interface TerminalDefinition {
+    id: string;
+    pairIndex: number;           // 0-3 for 4 wire pairs
+    polarity: '+' | '-';
+    relativeX: number;           // -0.5 to 0.5 relative to device width
+    relativeY: number;           // -0.5 to 0.5 relative to device height
+    label: string;               // Display label (e.g., "L1+")
+}
+
+/**
+ * Device type definition - describes a type of device that can be placed
+ */
+export interface DeviceType {
+    id: string;
+    name: string;
+    category: 'detector' | 'sounder' | 'io' | 'mcp';
+    description: string;
+    width: number;               // Device width in plan units
+    height: number;              // Device height in plan units
+    terminals: TerminalDefinition[];
+}
+
+/**
+ * Placed device instance on the floor plan
+ * Positions are in plan/world coordinates (not screen pixels)
+ */
+export interface PlacedDevice {
+    instanceId: string;
+    typeId: string;              // References DeviceType.id
+    x: number;                   // Plan X coordinate (center of device)
+    y: number;                   // Plan Y coordinate (center of device)
+    rotation: number;            // 0, 90, 180, or 270 degrees
+}
+
+/**
+ * Viewport transform from react-zoom-pan-pinch
+ */
+export interface ViewportTransform {
+    scale: number;
+    positionX: number;           // translateX in pixels
+    positionY: number;           // translateY in pixels
+}
+
+// Terminal positions for AutroGuard base:
+// 4 terminals at top, bottom, left, right
+const AUTROGUARD_TERMINALS: TerminalDefinition[] = [
+    { id: 'top', pairIndex: 0, polarity: '+', relativeX: 0, relativeY: -0.45, label: 'T' },
+    { id: 'right', pairIndex: 1, polarity: '+', relativeX: 0.45, relativeY: 0, label: 'R' },
+    { id: 'bottom', pairIndex: 2, polarity: '+', relativeX: 0, relativeY: 0.45, label: 'B' },
+    { id: 'left', pairIndex: 3, polarity: '+', relativeX: -0.45, relativeY: 0, label: 'L' },
+];
+
+/**
+ * Registry of all available device types
+ */
+export const DEVICE_TYPES: Record<string, DeviceType> = {
+    'autroguard-base': {
+        id: 'autroguard-base',
+        name: 'AutroGuard Base',
+        category: 'detector',
+        description: 'V-430 detector base with 4 wire pairs',
+        width: 50,
+        height: 50,
+        terminals: AUTROGUARD_TERMINALS,
+    },
+};
+
+/**
+ * Get device type by ID
+ */
+export function getDeviceType(typeId: string): DeviceType | undefined {
+    return DEVICE_TYPES[typeId];
+}
+
+/**
+ * Generate unique instance ID for placed devices
+ */
+export function generateInstanceId(): string {
+    return `device-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
