@@ -38,13 +38,31 @@ export interface PlacedDevice {
     rotation: number;            // 0, 90, 180, or 270 degrees
 }
 
-/**
- * Viewport transform from react-zoom-pan-pinch
- */
 export interface ViewportTransform {
     scale: number;
     positionX: number;           // translateX in pixels
     positionY: number;           // translateY in pixels
+}
+
+/**
+ * A connection between two terminals
+ */
+export interface Connection {
+    id: string;
+    fromDeviceId: string;
+    fromTerminalId: string;
+    toDeviceId: string;
+    toTerminalId: string;
+}
+
+/**
+ * State for the wire currently being drawn
+ */
+export interface DrawingWire {
+    startDeviceId: string;
+    startTerminalId: string;
+    endX: number;                // Plan X coordinate
+    endY: number;                // Plan Y coordinate
 }
 
 // Terminal positions for AutroGuard base:

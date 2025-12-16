@@ -9,7 +9,7 @@ import { generateFloorPlan, defaultConfig } from './utils/floorPlanGenerator';
 import { useCoordinates } from './hooks/useCoordinates';
 import { generateInstanceId, getDeviceType } from './types/devices';
 import type { RoomConfig } from './utils/floorPlanGenerator';
-import type { PlacedDevice, ViewportTransform } from './types/devices';
+import type { PlacedDevice, ViewportTransform, Connection, DrawingWire } from './types/devices';
 
 // SVG Drag preview component - shows the actual detector icon
 function DeviceDragPreview() {
@@ -41,6 +41,10 @@ function App() {
   const [placedDevices, setPlacedDevices] = useState<PlacedDevice[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+
+  // Wire connection state
+  const [connections, setConnections] = useState<Connection[]>([]);
+  const [drawingWire, setDrawingWire] = useState<DrawingWire | null>(null);
 
   // Projection position (where the device will land)
   const [projectionPosition, setProjectionPosition] = useState<{ x: number; y: number } | null>(null);
@@ -210,9 +214,73 @@ function App() {
     setSelectedDeviceId(prev => (prev === instanceId ? null : instanceId));
   };
 
-  // Handle terminal click (placeholder for future wiring)
-  const handleTerminalClick = (instanceId: string, terminalId: string) => {
-    console.log(`Terminal clicked: ${terminalId} on device ${instanceId}`);
+  // Handle wire start
+  const handleWireStart = (deviceId: string, terminalId: string, e: React.PointerEvent) => {
+    // Convert screen coordinates to plan coordinates for the initial end position
+    const containerRect = getContainerRect();
+    if (!containerRect) return;
+
+    const planCoords = screenToFloorPlan(e.clientX, e.clientY, viewportTransform, containerRect);
+
+    setDrawingWire({
+      startDeviceId: deviceId,
+      startTerminalId: terminalId,
+      endX: planCoords.x,
+      endY: planCoords.y,
+    });
+  };
+
+  // Handle wire end (complete connection)
+  const handleWireEnd = (deviceId: string, terminalId: string) => {
+    if (!drawingWire) return;
+
+    // Don't connect to self or same device
+    if (drawingWire.startDeviceId === deviceId) {
+      setDrawingWire(null);
+      return;
+    }
+
+    // Check if connection already exists
+    const exists = connections.some(c =>
+      (c.fromDeviceId === drawingWire.startDeviceId && c.fromTerminalId === drawingWire.startTerminalId && c.toDeviceId === deviceId && c.toTerminalId === terminalId) ||
+      (c.toDeviceId === drawingWire.startDeviceId && c.toTerminalId === drawingWire.startTerminalId && c.fromDeviceId === deviceId && c.fromTerminalId === terminalId)
+    );
+
+    if (!exists) {
+      const newConnection: Connection = {
+        id: `conn-${Date.now()}`,
+        fromDeviceId: drawingWire.startDeviceId,
+        fromTerminalId: drawingWire.startTerminalId,
+        toDeviceId: deviceId,
+        toTerminalId: terminalId,
+      };
+      setConnections(prev => [...prev, newConnection]);
+    }
+
+    setDrawingWire(null);
+  };
+
+  // Global pointer move for wire drawing
+  // attached to the main container
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (drawingWire) {
+      const containerRect = getContainerRect();
+      if (!containerRect) return;
+      const planCoords = screenToFloorPlan(e.clientX, e.clientY, viewportTransform, containerRect);
+
+      setDrawingWire(prev => prev ? {
+        ...prev,
+        endX: planCoords.x,
+        endY: planCoords.y
+      } : null);
+    }
+  };
+
+  // Global pointer up to cancel wire if released elsewhere
+  const handlePointerUp = () => {
+    if (drawingWire) {
+      setDrawingWire(null);
+    }
   };
 
   // Check if we're actively dragging
@@ -225,7 +293,12 @@ function App() {
       onDragMove={handleDragMove}
       onDragEnd={handleDragEnd}
     >
-      <div className="h-screen flex bg-gray-100" ref={containerRef}>
+      <div
+        className="h-screen flex bg-gray-100"
+        ref={containerRef}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+      >
         {/* Left Sidebar */}
         <Sidebar
           onGenerate={handleGenerate}
@@ -258,7 +331,10 @@ function App() {
               projectionPosition={projectionPosition}
               onTransformChange={handleTransformChange}
               onDeviceClick={handleDeviceClick}
-              onTerminalClick={handleTerminalClick}
+              connections={connections}
+              drawingWire={drawingWire}
+              onWireStart={handleWireStart}
+              onWireEnd={handleWireEnd}
             />
           </div>
         </div>

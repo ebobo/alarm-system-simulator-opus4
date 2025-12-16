@@ -1,5 +1,5 @@
 import { useDraggable } from '@dnd-kit/core';
-import type { PlacedDevice, ViewportTransform } from '../types/devices';
+import type { PlacedDevice, ViewportTransform, Connection, DrawingWire } from '../types/devices';
 import { getDeviceType } from '../types/devices';
 
 interface DeviceOverlayProps {
@@ -9,7 +9,10 @@ interface DeviceOverlayProps {
     projectionPosition?: { x: number; y: number } | null;
     viewportTransform: ViewportTransform;
     onDeviceClick?: (instanceId: string) => void;
-    onTerminalClick?: (instanceId: string, terminalId: string) => void;
+    connections?: Connection[];
+    drawingWire?: DrawingWire | null;
+    onWireStart?: (deviceId: string, terminalId: string, e: React.PointerEvent) => void;
+    onWireEnd?: (deviceId: string, terminalId: string) => void;
 }
 
 // Draggable device rendered as HTML element
@@ -19,12 +22,16 @@ function DraggableDevice({
     isDragging,
     viewportTransform,
     onDeviceClick,
+    onWireStart,
+    onWireEnd,
 }: {
     device: PlacedDevice;
     isSelected: boolean;
     isDragging: boolean;
     viewportTransform: ViewportTransform;
     onDeviceClick?: (instanceId: string) => void;
+    onWireStart?: (deviceId: string, terminalId: string, e: React.PointerEvent) => void;
+    onWireEnd?: (deviceId: string, terminalId: string) => void;
 }) {
     const { attributes, listeners, setNodeRef, transform } = useDraggable({
         id: `placed-${device.instanceId}`,
@@ -95,10 +102,31 @@ function DraggableDevice({
                 <circle r="2" fill="#64748B" />
 
                 {/* Terminals */}
-                <circle cx="0" cy="-22" r="5" fill="#FBBF24" stroke="#B45309" strokeWidth="1.5" />
-                <circle cx="22" cy="0" r="5" fill="#FBBF24" stroke="#B45309" strokeWidth="1.5" />
-                <circle cx="0" cy="22" r="5" fill="#FBBF24" stroke="#B45309" strokeWidth="1.5" />
-                <circle cx="-22" cy="0" r="5" fill="#FBBF24" stroke="#B45309" strokeWidth="1.5" />
+                {deviceType.terminals.map((terminal) => {
+                    const svgtX = terminal.relativeX * 50;
+                    const svgtY = terminal.relativeY * 50;
+
+                    return (
+                        <g key={terminal.id} transform={`translate(${svgtX}, ${svgtY})`}>
+                            {/* Hit area */}
+                            <circle
+                                r="8"
+                                fill="transparent"
+                                style={{ cursor: 'crosshair', pointerEvents: 'all' }}
+                                onPointerDown={(e) => {
+                                    e.stopPropagation();
+                                    onWireStart?.(device.instanceId, terminal.id, e);
+                                }}
+                                onPointerUp={(e) => {
+                                    e.stopPropagation();
+                                    onWireEnd?.(device.instanceId, terminal.id);
+                                }}
+                            />
+                            {/* Visible terminal */}
+                            <circle r="5" fill="#FBBF24" stroke="#B45309" strokeWidth="1.5" style={{ pointerEvents: 'none' }} />
+                        </g>
+                    );
+                })}
             </svg>
         </div>
     );
@@ -152,6 +180,25 @@ function ProjectionGuide({
  * Overlay that renders devices as HTML elements positioned using viewport transform.
  * This allows devices to be properly draggable without interfering with pan/zoom.
  */
+// Connection Rendering Helper
+function Wire({
+    startX, startY, endX, endY, isPreview = false
+}: {
+    startX: number; startY: number; endX: number; endY: number; isPreview?: boolean
+}) {
+    return (
+        <line
+            x1={startX} y1={startY}
+            x2={endX} y2={endY}
+            stroke={isPreview ? "#3B82F6" : "#EF4444"}
+            strokeWidth="2"
+            strokeOpacity={isPreview ? 0.6 : 0.8}
+            strokeDasharray={isPreview ? "5 5" : "none"}
+            style={{ pointerEvents: 'none' }}
+        />
+    );
+}
+
 export default function DeviceOverlay({
     devices,
     selectedDeviceId,
@@ -159,7 +206,35 @@ export default function DeviceOverlay({
     projectionPosition,
     viewportTransform,
     onDeviceClick,
+    onWireStart,
+    onWireEnd,
+    connections = [],
+    drawingWire,
 }: DeviceOverlayProps) {
+    const { scale, positionX, positionY } = viewportTransform;
+
+    const getTerminalScreenPos = (deviceId: string, terminalId: string) => {
+        const device = devices.find(d => d.instanceId === deviceId);
+        if (!device) return null;
+
+        const type = getDeviceType(device.typeId);
+        if (!type) return null;
+
+        const terminal = type.terminals.find(t => t.id === terminalId);
+        if (!terminal) return null;
+
+        const devX = device.x * scale + positionX;
+        const devY = device.y * scale + positionY;
+
+        const worldOffsetX = terminal.relativeX * 50;
+        const worldOffsetY = terminal.relativeY * 50;
+
+        return {
+            x: devX + worldOffsetX * scale,
+            y: devY + worldOffsetY * scale
+        };
+    };
+
     return (
         <div
             className="device-overlay"
@@ -173,6 +248,26 @@ export default function DeviceOverlay({
                 overflow: 'hidden',
             }}
         >
+            {/* Wires Layer */}
+            <svg
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }}
+            >
+                {connections.map(conn => {
+                    const start = getTerminalScreenPos(conn.fromDeviceId, conn.fromTerminalId);
+                    const end = getTerminalScreenPos(conn.toDeviceId, conn.toTerminalId);
+                    if (!start || !end) return null;
+                    return <Wire key={conn.id} startX={start.x} startY={start.y} endX={end.x} endY={end.y} />;
+                })}
+
+                {drawingWire && (() => {
+                    const start = getTerminalScreenPos(drawingWire.startDeviceId, drawingWire.startTerminalId);
+                    if (!start) return null;
+                    const endX = drawingWire.endX * scale + positionX;
+                    const endY = drawingWire.endY * scale + positionY;
+                    return <Wire startX={start.x} startY={start.y} endX={endX} endY={endY} isPreview={true} />;
+                })()}
+            </svg>
+
             {/* Projection guide */}
             {projectionPosition && (
                 <ProjectionGuide
@@ -182,7 +277,7 @@ export default function DeviceOverlay({
                 />
             )}
 
-            {/* Devices - pointer events enabled for each device */}
+            {/* Devices */}
             {devices.map((device) => {
                 const isSelected = device.instanceId === selectedDeviceId;
                 const isDragging = activeDragId === `placed-${device.instanceId}`;
@@ -195,6 +290,8 @@ export default function DeviceOverlay({
                             isDragging={isDragging}
                             viewportTransform={viewportTransform}
                             onDeviceClick={onDeviceClick}
+                            onWireStart={onWireStart}
+                            onWireEnd={onWireEnd}
                         />
                     </div>
                 );

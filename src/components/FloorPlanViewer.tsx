@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { TransformWrapper, TransformComponent, useControls } from 'react-zoom-pan-pinch';
 import type { ReactZoomPanPinchRef } from 'react-zoom-pan-pinch';
 import { useDroppable } from '@dnd-kit/core';
-import type { PlacedDevice, ViewportTransform } from '../types/devices';
+import type { PlacedDevice, ViewportTransform, Connection, DrawingWire } from '../types/devices';
 import DeviceOverlay from './DeviceOverlay';
 
 interface FloorPlanViewerProps {
@@ -13,7 +13,10 @@ interface FloorPlanViewerProps {
     projectionPosition?: { x: number; y: number } | null;
     onTransformChange?: (transform: ViewportTransform) => void;
     onDeviceClick?: (instanceId: string) => void;
-    onTerminalClick?: (instanceId: string, terminalId: string) => void;
+    connections: Connection[];
+    drawingWire: DrawingWire | null;
+    onWireStart: (deviceId: string, terminalId: string, e: React.PointerEvent) => void;
+    onWireEnd: (deviceId: string, terminalId: string) => void;
 }
 
 function Controls() {
@@ -62,7 +65,10 @@ export default function FloorPlanViewer({
     projectionPosition,
     onTransformChange,
     onDeviceClick,
-    onTerminalClick,
+    connections,
+    drawingWire,
+    onWireStart,
+    onWireEnd,
 }: FloorPlanViewerProps) {
     const transformRef = useRef<ReactZoomPanPinchRef>(null);
 
@@ -144,7 +150,10 @@ export default function FloorPlanViewer({
                 projectionPosition={projectionPosition}
                 viewportTransform={localTransform}
                 onDeviceClick={onDeviceClick}
-                onTerminalClick={onTerminalClick}
+                connections={connections}
+                drawingWire={drawingWire}
+                onWireStart={onWireStart}
+                onWireEnd={onWireEnd}
             />
 
             {/* Drop zone indicator */}
