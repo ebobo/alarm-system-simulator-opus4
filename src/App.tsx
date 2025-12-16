@@ -5,12 +5,15 @@ import FloorPlanViewer from './components/FloorPlanViewer';
 import Sidebar from './components/Sidebar';
 import DevicePalette from './components/DevicePalette';
 import ConfigModal from './components/ConfigModal';
+import SaveNameDialog from './components/SaveNameDialog';
 import { generateFloorPlan, defaultConfig } from './utils/floorPlanGenerator';
 import { useCoordinates } from './hooks/useCoordinates';
 import { generateInstanceId, generateSerialNumber, getDeviceType } from './types/devices';
 import DevicePropertyPanel from './components/DevicePropertyPanel';
+import { saveProject, loadProject, deleteProject, getProjectList, generateProjectId, getMostRecentProject } from './utils/storage';
 import type { RoomConfig } from './utils/floorPlanGenerator';
 import type { PlacedDevice, ViewportTransform, Connection, DrawingWire } from './types/devices';
+import type { ProjectListEntry } from './types/storage';
 
 // SVG Drag preview component - shows the device icon
 function DeviceDragPreview({ deviceTypeId }: { deviceTypeId: string | null }) {
@@ -63,6 +66,17 @@ function App() {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [drawingWire, setDrawingWire] = useState<DrawingWire | null>(null);
 
+  // Save/Load state
+  const [saveNotification, setSaveNotification] = useState<string | null>(null);
+  const [showNewProjectConfirm, setShowNewProjectConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showSaveNameDialog, setShowSaveNameDialog] = useState(false);
+
+  // Project management state
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [currentProjectName, setCurrentProjectName] = useState('Generated Plan');
+  const [projectList, setProjectList] = useState<ProjectListEntry[]>([]);
+
   // Projection position (where the device will land)
   const [projectionPosition, setProjectionPosition] = useState<{ x: number; y: number } | null>(null);
 
@@ -80,6 +94,24 @@ function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { screenToFloorPlan } = useCoordinates();
 
+  // Refs to track latest state for save function (fixes stale closure issue)
+  const latestStateRef = useRef({
+    config,
+    svgContent,
+    placedDevices,
+    connections,
+  });
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    latestStateRef.current = {
+      config,
+      svgContent,
+      placedDevices,
+      connections,
+    };
+  }, [config, svgContent, placedDevices, connections]);
+
   // Configure drag sensor with activation constraints
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -89,17 +121,38 @@ function App() {
     })
   );
 
-  // Generate floor plan on initial load
+  // Load saved project or generate default on initial load
   useEffect(() => {
-    const initialPlan = generateFloorPlan(defaultConfig);
-    setSvgContent(initialPlan);
+    // Load project list first
+    const list = getProjectList();
+    setProjectList(list);
+
+    // Load most recent project or generate default
+    const savedProject = getMostRecentProject();
+    if (savedProject) {
+      setConfig(savedProject.config);
+      setSvgContent(savedProject.svgContent);
+      setPlacedDevices(savedProject.placedDevices);
+      setConnections(savedProject.connections);
+      setCurrentProjectId(savedProject.id);
+      setCurrentProjectName(savedProject.name);
+    } else {
+      const initialPlan = generateFloorPlan(defaultConfig);
+      setSvgContent(initialPlan);
+      setCurrentProjectId(null);
+      setCurrentProjectName('Generated Plan');
+    }
   }, []);
 
   const handleGenerate = () => {
     const newPlan = generateFloorPlan(config);
     setSvgContent(newPlan);
     setPlacedDevices([]);
+    setConnections([]);
     setSelectedDeviceId(null);
+    // Reset to new unsaved project
+    setCurrentProjectId(null);
+    setCurrentProjectName('Generated Plan');
   };
 
   const handleConfigApply = (newConfig: RoomConfig) => {
@@ -107,7 +160,104 @@ function App() {
     const newPlan = generateFloorPlan(newConfig);
     setSvgContent(newPlan);
     setPlacedDevices([]);
+    setConnections([]);
     setSelectedDeviceId(null);
+    // Reset to unsaved state
+    setCurrentProjectId(null);
+    setCurrentProjectName('Generated Plan');
+  };
+
+  // Handle save button click
+  const handleSave = () => {
+    // If project name is "Generated Plan", show dialog to get name
+    if (currentProjectName === 'Generated Plan') {
+      setShowSaveNameDialog(true);
+    } else {
+      // Save with existing name
+      doSaveProject(currentProjectId!, currentProjectName);
+    }
+  };
+
+  // Actually save the project with a name
+  const doSaveProject = (id: string, name: string) => {
+    try {
+      const { config: currentConfig, svgContent: currentSvg, placedDevices: currentDevices, connections: currentConnections } = latestStateRef.current;
+      saveProject({
+        id,
+        name,
+        config: currentConfig,
+        svgContent: currentSvg,
+        placedDevices: currentDevices,
+        connections: currentConnections,
+      });
+      setCurrentProjectId(id);
+      setCurrentProjectName(name);
+      setProjectList(getProjectList());
+      setSaveNotification('Project saved!');
+      setTimeout(() => setSaveNotification(null), 2000);
+    } catch {
+      setSaveNotification('Failed to save!');
+      setTimeout(() => setSaveNotification(null), 3000);
+    }
+  };
+
+  // Handle save with name from dialog
+  const handleSaveWithName = (name: string) => {
+    const id = currentProjectId || generateProjectId();
+    doSaveProject(id, name);
+    setShowSaveNameDialog(false);
+  };
+
+  // Start new project (with confirmation)
+  const handleNewProject = () => {
+    if (placedDevices.length > 0 || connections.length > 0) {
+      setShowNewProjectConfirm(true);
+    } else {
+      setIsConfigOpen(true);
+    }
+  };
+
+  const confirmNewProject = () => {
+    setShowNewProjectConfirm(false);
+    setIsConfigOpen(true);
+  };
+
+  // Delete saved project
+  const handleDelete = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = () => {
+    if (currentProjectId) {
+      deleteProject(currentProjectId);
+      setProjectList(getProjectList());
+    }
+    setShowDeleteConfirm(false);
+    // Reset to default state
+    setConfig(defaultConfig);
+    const newPlan = generateFloorPlan(defaultConfig);
+    setSvgContent(newPlan);
+    setPlacedDevices([]);
+    setConnections([]);
+    setSelectedDeviceId(null);
+    setCurrentProjectId(null);
+    setCurrentProjectName('Generated Plan');
+    setSaveNotification('Project deleted');
+    setTimeout(() => setSaveNotification(null), 2000);
+  };
+
+  // Handle selecting a project from the sidebar
+  const handleSelectProject = (id: string) => {
+    const project = loadProject(id);
+    if (project) {
+      setConfig(project.config);
+      setSvgContent(project.svgContent);
+      setPlacedDevices(project.placedDevices);
+      setConnections(project.connections);
+      setCurrentProjectId(project.id);
+      setCurrentProjectName(project.name);
+      setSelectedDeviceId(null);
+    }
   };
 
   // Handle viewport transform changes from FloorPlanViewer
@@ -424,6 +574,10 @@ function App() {
         <Sidebar
           onGenerate={handleGenerate}
           onOpenConfig={() => setIsConfigOpen(true)}
+          projectList={projectList}
+          currentProjectId={currentProjectId}
+          currentProjectName={currentProjectName}
+          onSelectProject={handleSelectProject}
         />
 
         {/* Main Content */}
@@ -437,8 +591,35 @@ function App() {
                 {placedDevices.length > 0 && ` • ${placedDevices.length} device${placedDevices.length !== 1 ? 's' : ''}`}
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">Stage 2</span>
+            <div className="flex items-center gap-3">
+              {/* Save notification */}
+              {saveNotification && (
+                <span className={`text-xs px-3 py-1 rounded-full font-medium ${saveNotification.includes('Failed')
+                  ? 'bg-red-100 text-red-700'
+                  : 'bg-green-100 text-green-700'
+                  }`}>
+                  {saveNotification}
+                </span>
+              )}
+
+              <button
+                onClick={handleNewProject}
+                className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                New
+              </button>
+              <button
+                onClick={handleSave}
+                className="px-3 py-1.5 text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors"
+              >
+                Save
+              </button>
+              <button
+                onClick={handleDelete}
+                className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+              >
+                Delete
+              </button>
             </div>
           </div>
 
@@ -481,6 +662,76 @@ function App() {
           onApply={handleConfigApply}
           initialConfig={config}
         />
+
+        {/* Save Name Dialog */}
+        <SaveNameDialog
+          isOpen={showSaveNameDialog}
+          onSave={handleSaveWithName}
+          onCancel={() => setShowSaveNameDialog(false)}
+        />
+
+        {/* New Project Confirmation Modal */}
+        {showNewProjectConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/50" onClick={() => setShowNewProjectConfirm(false)} />
+            <div className="relative bg-white rounded-xl shadow-2xl p-6 max-w-sm mx-4">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Create New Project?</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                You have unsaved changes. Would you like to save before creating a new project?
+              </p>
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => setShowNewProjectConfirm(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    handleSave();
+                    confirmNewProject();
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg"
+                >
+                  Save & New
+                </button>
+                <button
+                  onClick={confirmNewProject}
+                  className="px-4 py-2 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-lg"
+                >
+                  Discard & New
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/50" onClick={() => setShowDeleteConfirm(false)} />
+            <div className="relative bg-white rounded-xl shadow-2xl p-6 max-w-sm mx-4">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Delete Saved Project?</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                This will permanently delete your saved project. This action cannot be undone.
+              </p>
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Drag Overlay - shows the device icon while dragging */}

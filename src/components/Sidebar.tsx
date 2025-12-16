@@ -1,9 +1,38 @@
+import type { ProjectListEntry } from '../types/storage';
+
 interface SidebarProps {
     onGenerate: () => void;
     onOpenConfig: () => void;
+    projectList: ProjectListEntry[];
+    currentProjectId: string | null;
+    currentProjectName: string;
+    onSelectProject: (id: string) => void;
 }
 
-export default function Sidebar({ onGenerate, onOpenConfig }: SidebarProps) {
+export default function Sidebar({
+    onGenerate,
+    onOpenConfig,
+    projectList,
+    currentProjectId,
+    currentProjectName,
+    onSelectProject
+}: SidebarProps) {
+    // Format relative time for display
+    const formatRelativeTime = (isoDate: string): string => {
+        const date = new Date(isoDate);
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        if (diffDays < 7) return `${diffDays}d ago`;
+        return date.toLocaleDateString();
+    };
+
     return (
         <div className="w-72 bg-gradient-to-b from-slate-800 to-slate-900 text-white flex flex-col">
             {/* Header */}
@@ -25,25 +54,66 @@ export default function Sidebar({ onGenerate, onOpenConfig }: SidebarProps) {
             {/* Plans Section */}
             <div className="flex-1 p-4 overflow-y-auto">
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
-                    Floor Plans
+                    Project List
                 </h2>
 
                 <div className="space-y-2">
-                    {/* Generated Plan Option */}
-                    <div className="bg-slate-700/50 hover:bg-slate-700 rounded-lg p-3 cursor-pointer transition-all duration-200 border border-slate-600/50 group">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                                </svg>
+                    {/* Current unsaved project (if working on Generated Plan) */}
+                    {currentProjectName === 'Generated Plan' && (
+                        <div className="bg-slate-700/50 rounded-lg p-3 border border-orange-500/50 group">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-orange-500/20 rounded-lg flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                    </svg>
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-sm font-medium text-white">Generated Plan</p>
+                                    <p className="text-xs text-orange-400">Unsaved</p>
+                                </div>
+                                <div className="w-2 h-2 rounded-full bg-orange-400"></div>
                             </div>
-                            <div className="flex-1">
-                                <p className="text-sm font-medium text-white">Generated Plan</p>
-                                <p className="text-xs text-slate-400">Randomly generated layout</p>
-                            </div>
-                            <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
                         </div>
-                    </div>
+                    )}
+
+                    {/* Saved projects */}
+                    {projectList.map((project) => {
+                        const isActive = project.id === currentProjectId;
+                        return (
+                            <div
+                                key={project.id}
+                                onClick={() => !isActive && onSelectProject(project.id)}
+                                className={`rounded-lg p-3 cursor-pointer transition-all duration-200 border group
+                                    ${isActive
+                                        ? 'bg-slate-700/50 border-emerald-500/50'
+                                        : 'bg-slate-700/30 hover:bg-slate-700 border-slate-600/50'
+                                    }`}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center
+                                        ${isActive ? 'bg-emerald-500/20' : 'bg-slate-600/50'}`}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                        </svg>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-white truncate">{project.name}</p>
+                                        <p className="text-xs text-slate-400">{formatRelativeTime(project.savedAt)}</p>
+                                    </div>
+                                    {isActive && (
+                                        <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+
+                    {/* Empty state */}
+                    {projectList.length === 0 && currentProjectName !== 'Generated Plan' && (
+                        <div className="text-center py-4 text-slate-500 text-sm">
+                            No saved projects
+                        </div>
+                    )}
                 </div>
             </div>
 
