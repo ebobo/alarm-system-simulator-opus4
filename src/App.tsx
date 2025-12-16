@@ -41,6 +41,7 @@ function App() {
   const [placedDevices, setPlacedDevices] = useState<PlacedDevice[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [dragDelta, setDragDelta] = useState<{ x: number; y: number } | null>(null);
 
   // Wire connection state
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -120,6 +121,9 @@ function App() {
     const pointerEvent = activatorEvent as PointerEvent;
     if (!pointerEvent) return;
 
+    // Update drag delta
+    setDragDelta({ x: delta.x, y: delta.y });
+
     const containerRect = getContainerRect();
     if (!containerRect) return;
 
@@ -149,6 +153,7 @@ function App() {
 
     setActiveDragId(null);
     setProjectionPosition(null);
+    setDragDelta(null);
 
     const containerRect = getContainerRect();
     if (!containerRect) return;
@@ -335,6 +340,7 @@ function App() {
               drawingWire={drawingWire}
               onWireStart={handleWireStart}
               onWireEnd={handleWireEnd}
+              dragDelta={dragDelta}
             />
           </div>
         </div>

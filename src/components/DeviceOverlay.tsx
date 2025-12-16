@@ -13,6 +13,7 @@ interface DeviceOverlayProps {
     drawingWire?: DrawingWire | null;
     onWireStart?: (deviceId: string, terminalId: string, e: React.PointerEvent) => void;
     onWireEnd?: (deviceId: string, terminalId: string) => void;
+    dragDelta?: { x: number; y: number } | null;
 }
 
 // Draggable device rendered as HTML element
@@ -210,6 +211,7 @@ export default function DeviceOverlay({
     onWireEnd,
     connections = [],
     drawingWire,
+    dragDelta,
 }: DeviceOverlayProps) {
     const { scale, positionX, positionY } = viewportTransform;
 
@@ -223,15 +225,21 @@ export default function DeviceOverlay({
         const terminal = type.terminals.find(t => t.id === terminalId);
         if (!terminal) return null;
 
-        const devX = device.x * scale + positionX;
-        const devY = device.y * scale + positionY;
+        let devScreenX = device.x * scale + positionX;
+        let devScreenY = device.y * scale + positionY;
+
+        // If this device is currently being dragged, add the drag delta
+        if (activeDragId === `placed-${deviceId}` && dragDelta) {
+            devScreenX += dragDelta.x;
+            devScreenY += dragDelta.y;
+        }
 
         const worldOffsetX = terminal.relativeX * 50;
         const worldOffsetY = terminal.relativeY * 50;
 
         return {
-            x: devX + worldOffsetX * scale,
-            y: devY + worldOffsetY * scale
+            x: devScreenX + worldOffsetX * scale,
+            y: devScreenY + worldOffsetY * scale
         };
     };
 
