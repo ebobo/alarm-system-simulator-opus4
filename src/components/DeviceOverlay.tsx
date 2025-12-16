@@ -5,11 +5,13 @@ import { getDeviceType } from '../types/devices';
 interface DeviceOverlayProps {
     devices: PlacedDevice[];
     selectedDeviceId?: string | null;
+    selectedWireId?: string | null;
     activeDragId?: string | null;
     projectionPosition?: { x: number; y: number } | null;
     projectionDeviceTypeId?: string | null;
     viewportTransform: ViewportTransform;
     onDeviceClick?: (instanceId: string) => void;
+    onWireClick?: (wireId: string) => void;
     connections?: Connection[];
     drawingWire?: DrawingWire | null;
     onWireStart?: (deviceId: string, terminalId: string, e: React.PointerEvent) => void;
@@ -290,31 +292,72 @@ function ProjectionGuide({
  */
 // Connection Rendering Helper
 function Wire({
-    startX, startY, endX, endY, isPreview = false
+    id,
+    startX, startY, endX, endY,
+    isPreview = false,
+    isSelected = false,
+    isPowered = false,
+    onClick,
 }: {
-    startX: number; startY: number; endX: number; endY: number; isPreview?: boolean
+    id?: string;
+    startX: number; startY: number; endX: number; endY: number;
+    isPreview?: boolean;
+    isSelected?: boolean;
+    isPowered?: boolean;
+    onClick?: (id: string) => void;
 }) {
+    // Determine wire color based on state: selected > powered > default
+    const getWireColor = () => {
+        if (isPreview) return "#3B82F6"; // Blue for preview
+        if (isSelected) return "#60A5FA"; // Light blue for selected
+        if (isPowered) return "#F97316"; // Orange for powered
+        return "#6B7280"; // Gray for default
+    };
+
+    const handleClick = (e: React.MouseEvent) => {
+        if (id && onClick) {
+            e.stopPropagation();
+            onClick(id);
+        }
+    };
+
     return (
-        <line
-            x1={startX} y1={startY}
-            x2={endX} y2={endY}
-            stroke={isPreview ? "#3B82F6" : "#EF4444"}
-            strokeWidth="2"
-            strokeOpacity={isPreview ? 0.6 : 0.8}
-            strokeDasharray={isPreview ? "5 5" : "none"}
-            style={{ pointerEvents: 'none' }}
-        />
+        <g>
+            {/* Invisible wider line for easier clicking */}
+            {!isPreview && (
+                <line
+                    x1={startX} y1={startY}
+                    x2={endX} y2={endY}
+                    stroke="transparent"
+                    strokeWidth="12"
+                    style={{ cursor: 'pointer', pointerEvents: 'all' }}
+                    onClick={handleClick}
+                />
+            )}
+            {/* Visible wire */}
+            <line
+                x1={startX} y1={startY}
+                x2={endX} y2={endY}
+                stroke={getWireColor()}
+                strokeWidth={isSelected ? "3" : "2"}
+                strokeOpacity={isPreview ? 0.6 : 0.9}
+                strokeDasharray={isPreview ? "5 5" : "none"}
+                style={{ pointerEvents: 'none' }}
+            />
+        </g>
     );
 }
 
 export default function DeviceOverlay({
     devices,
     selectedDeviceId,
+    selectedWireId,
     activeDragId,
     projectionPosition,
     projectionDeviceTypeId,
     viewportTransform,
     onDeviceClick,
+    onWireClick,
     onWireStart,
     onWireEnd,
     connections = [],
@@ -368,13 +411,24 @@ export default function DeviceOverlay({
         >
             {/* Wires Layer */}
             <svg
-                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }}
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0 }}
             >
                 {connections.map(conn => {
                     const start = getTerminalScreenPos(conn.fromDeviceId, conn.fromTerminalId);
                     const end = getTerminalScreenPos(conn.toDeviceId, conn.toTerminalId);
                     if (!start || !end) return null;
-                    return <Wire key={conn.id} startX={start.x} startY={start.y} endX={end.x} endY={end.y} />;
+                    return (
+                        <Wire
+                            key={conn.id}
+                            id={conn.id}
+                            startX={start.x}
+                            startY={start.y}
+                            endX={end.x}
+                            endY={end.y}
+                            isSelected={selectedWireId === conn.id}
+                            onClick={onWireClick}
+                        />
+                    );
                 })}
 
                 {drawingWire && (() => {

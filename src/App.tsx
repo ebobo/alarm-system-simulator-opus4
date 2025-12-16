@@ -65,6 +65,7 @@ function App() {
   // Wire connection state
   const [connections, setConnections] = useState<Connection[]>([]);
   const [drawingWire, setDrawingWire] = useState<DrawingWire | null>(null);
+  const [selectedWireId, setSelectedWireId] = useState<string | null>(null);
 
   // Save/Load state
   const [saveNotification, setSaveNotification] = useState<string | null>(null);
@@ -457,7 +458,50 @@ function App() {
   // Handle device click for selection
   const handleDeviceClick = (instanceId: string) => {
     setSelectedDeviceId(prev => (prev === instanceId ? null : instanceId));
+    setSelectedWireId(null); // Deselect wire when selecting device
   };
+
+  // Handle wire click for selection
+  const handleWireClick = (wireId: string) => {
+    setSelectedWireId(prev => (prev === wireId ? null : wireId));
+    setSelectedDeviceId(null); // Deselect device when selecting wire
+  };
+
+  // Handle floor plan empty area click - deselect all
+  const handleFloorPlanClick = () => {
+    setSelectedDeviceId(null);
+    setSelectedWireId(null);
+  };
+
+  // Handle Delete key to remove selected wire or device
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        // Don't delete if user is typing in an input
+        if ((e.target as HTMLElement).tagName === 'INPUT') return;
+
+        // Delete selected wire
+        if (selectedWireId) {
+          setConnections(prev => prev.filter(c => c.id !== selectedWireId));
+          setSelectedWireId(null);
+        }
+
+        // Delete selected device and its connected wires
+        if (selectedDeviceId) {
+          // Remove all connections to/from this device
+          setConnections(prev => prev.filter(c =>
+            c.fromDeviceId !== selectedDeviceId && c.toDeviceId !== selectedDeviceId
+          ));
+          // Remove the device
+          setPlacedDevices(prev => prev.filter(d => d.instanceId !== selectedDeviceId));
+          setSelectedDeviceId(null);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedWireId, selectedDeviceId]);
 
   // Handle device property updates
   const handleUpdateDevice = useCallback((updatedDevice: PlacedDevice) => {
@@ -624,16 +668,18 @@ function App() {
           </div>
 
           {/* Viewer */}
-          <div className="flex-1 p-4">
+          <div className="flex-1 p-4" onClick={handleFloorPlanClick}>
             <FloorPlanViewer
               svgContent={svgContent}
               placedDevices={placedDevices}
               selectedDeviceId={selectedDeviceId}
+              selectedWireId={selectedWireId}
               activeDragId={activeDragId}
               projectionPosition={projectionPosition}
               projectionDeviceTypeId={getDraggedDeviceTypeId()}
               onTransformChange={handleTransformChange}
               onDeviceClick={handleDeviceClick}
+              onWireClick={handleWireClick}
               connections={connections}
               drawingWire={drawingWire}
               onWireStart={handleWireStart}
@@ -651,7 +697,27 @@ function App() {
           </div>
           <DevicePropertyPanel
             selectedDevice={placedDevices.find(d => d.instanceId === selectedDeviceId) || null}
+            selectedWire={connections.find(c => c.id === selectedWireId) || null}
+            floorPlanInfo={{
+              name: currentProjectName,
+              rooms: { offices: config.offices, meetingRooms: config.meetingRooms, toilets: config.toilets },
+              deviceCount: placedDevices.length,
+              wireCount: connections.length,
+            }}
             onUpdateDevice={handleUpdateDevice}
+            onDeleteWire={(wireId) => {
+              setConnections(prev => prev.filter(c => c.id !== wireId));
+              setSelectedWireId(null);
+            }}
+            onDeleteDevice={(deviceId) => {
+              // Remove all connections to/from this device
+              setConnections(prev => prev.filter(c =>
+                c.fromDeviceId !== deviceId && c.toDeviceId !== deviceId
+              ));
+              // Remove the device
+              setPlacedDevices(prev => prev.filter(d => d.instanceId !== deviceId));
+              setSelectedDeviceId(null);
+            }}
           />
         </div>
 

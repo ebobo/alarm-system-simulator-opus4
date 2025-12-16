@@ -9,11 +9,13 @@ interface FloorPlanViewerProps {
     svgContent: string;
     placedDevices: PlacedDevice[];
     selectedDeviceId?: string | null;
+    selectedWireId?: string | null;
     activeDragId?: string | null;
     projectionPosition?: { x: number; y: number } | null;
     projectionDeviceTypeId?: string | null;
     onTransformChange?: (transform: ViewportTransform) => void;
     onDeviceClick?: (instanceId: string) => void;
+    onWireClick?: (wireId: string) => void;
     connections: Connection[];
     drawingWire: DrawingWire | null;
     onWireStart: (deviceId: string, terminalId: string, e: React.PointerEvent) => void;
@@ -64,11 +66,13 @@ export default function FloorPlanViewer({
     svgContent,
     placedDevices,
     selectedDeviceId,
+    selectedWireId,
     activeDragId,
     projectionPosition,
     projectionDeviceTypeId,
     onTransformChange,
     onDeviceClick,
+    onWireClick,
     connections,
     drawingWire,
     onWireStart,
@@ -152,11 +156,13 @@ export default function FloorPlanViewer({
             <DeviceOverlay
                 devices={placedDevices}
                 selectedDeviceId={selectedDeviceId}
+                selectedWireId={selectedWireId}
                 activeDragId={activeDragId}
                 projectionPosition={projectionPosition}
                 projectionDeviceTypeId={projectionDeviceTypeId}
                 viewportTransform={localTransform}
                 onDeviceClick={onDeviceClick}
+                onWireClick={onWireClick}
                 connections={connections}
                 drawingWire={drawingWire}
                 onWireStart={onWireStart}

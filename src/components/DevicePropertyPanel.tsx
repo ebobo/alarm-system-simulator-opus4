@@ -1,25 +1,112 @@
-import type { PlacedDevice } from '../types/devices';
+import type { PlacedDevice, Connection } from '../types/devices';
+
+interface FloorPlanInfo {
+    name: string;
+    rooms: { offices: number; meetingRooms: number; toilets: number };
+    deviceCount: number;
+    wireCount: number;
+}
 
 interface DevicePropertyPanelProps {
     selectedDevice: PlacedDevice | null;
+    selectedWire: Connection | null;
+    floorPlanInfo: FloorPlanInfo;
     onUpdateDevice: (device: PlacedDevice) => void;
     onPowerOn?: (device: PlacedDevice) => void;
+    onDeleteWire?: (wireId: string) => void;
+    onDeleteDevice?: (deviceId: string) => void;
 }
 
 /**
  * Property panel component for displaying and editing device properties
- * Shows at the bottom of the device palette when a device is selected
+ * Shows floor plan info when nothing selected, wire info when wire selected, device info otherwise
  */
-export default function DevicePropertyPanel({ selectedDevice, onUpdateDevice, onPowerOn }: DevicePropertyPanelProps) {
-    if (!selectedDevice) {
+export default function DevicePropertyPanel({
+    selectedDevice,
+    selectedWire,
+    floorPlanInfo,
+    onUpdateDevice,
+    onPowerOn,
+    onDeleteWire,
+    onDeleteDevice
+}: DevicePropertyPanelProps) {
+    // Show floor plan info when nothing is selected
+    if (!selectedDevice && !selectedWire) {
         return (
-            <div className="p-4 border-t border-slate-700 bg-slate-800/50">
-                <p className="text-xs text-slate-500 text-center italic">
-                    Select a device to view properties
-                </p>
+            <div className="border-t border-slate-700 bg-slate-800/50">
+                <div className="px-4 py-2 border-b border-slate-700/50 bg-slate-700/30">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                        Floor Plan
+                    </h3>
+                </div>
+                <div className="p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-400">Name</span>
+                        <span className="text-xs text-slate-200">{floorPlanInfo.name}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-400">Offices</span>
+                        <span className="text-xs text-slate-200">{floorPlanInfo.rooms.offices}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-400">Meeting Rooms</span>
+                        <span className="text-xs text-slate-200">{floorPlanInfo.rooms.meetingRooms}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-400">Toilets</span>
+                        <span className="text-xs text-slate-200">{floorPlanInfo.rooms.toilets}</span>
+                    </div>
+                    <div className="border-t border-slate-700 pt-2 mt-2">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs text-slate-400">Devices</span>
+                            <span className="text-xs text-slate-200">{floorPlanInfo.deviceCount}</span>
+                        </div>
+                        <div className="flex items-center justify-between mt-1">
+                            <span className="text-xs text-slate-400">Connections</span>
+                            <span className="text-xs text-slate-200">{floorPlanInfo.wireCount}</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         );
     }
+
+    // Show wire info when wire is selected
+    if (selectedWire) {
+        return (
+            <div className="border-t border-slate-700 bg-slate-800/50">
+                <div className="px-4 py-2 border-b border-slate-700/50 bg-slate-700/30">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                        Wire Connection
+                    </h3>
+                </div>
+                <div className="p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-400">Status</span>
+                        <span className="text-xs text-slate-200">Connected</span>
+                    </div>
+                    <div className="pt-2">
+                        <button
+                            onClick={() => onDeleteWire?.(selectedWire.id)}
+                            className="w-full bg-red-600 hover:bg-red-500 text-white text-xs font-semibold 
+                                       py-2 px-3 rounded transition-colors duration-200 flex items-center justify-center gap-2"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete Wire
+                        </button>
+                        <p className="text-[10px] text-slate-500 text-center mt-1">
+                            or press Delete key
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Device is selected - show device properties
+    if (!selectedDevice) return null;
 
     const isLoopDriver = selectedDevice.typeId === 'loop-driver';
 
@@ -149,6 +236,23 @@ export default function DevicePropertyPanel({ selectedDevice, onUpdateDevice, on
                         </div>
                     </>
                 )}
+
+                {/* Delete Device Button - shown for all devices */}
+                <div className="pt-3 border-t border-slate-700 mt-3">
+                    <button
+                        onClick={() => onDeleteDevice?.(selectedDevice.instanceId)}
+                        className="w-full bg-red-600 hover:bg-red-500 text-white text-xs font-semibold 
+                                   py-2 px-3 rounded transition-colors duration-200 flex items-center justify-center gap-2"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Delete Device
+                    </button>
+                    <p className="text-[10px] text-slate-500 text-center mt-1">
+                        or press Delete key
+                    </p>
+                </div>
             </div>
         </div>
     );
