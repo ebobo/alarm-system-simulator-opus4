@@ -145,6 +145,89 @@ function DraggableDevice({
                             LD
                         </text>
                     </>
+                ) : device.typeId === 'mcp' ? (
+                    <>
+                        {/* Selection ring for MCP */}
+                        {isSelected && (
+                            <rect
+                                x={-deviceType.width / 2 - 4}
+                                y={-deviceType.height / 2 - 4}
+                                width={deviceType.width + 8}
+                                height={deviceType.height + 8}
+                                rx="4"
+                                fill="none"
+                                stroke="#3B82F6"
+                                strokeWidth="2"
+                                strokeDasharray="4 2"
+                            />
+                        )}
+
+                        {/* MCP body - red square */}
+                        <rect
+                            x={-deviceType.width / 2}
+                            y={-deviceType.height / 2}
+                            width={deviceType.width}
+                            height={deviceType.height}
+                            rx="3"
+                            fill="#DC2626"
+                            stroke="#991B1B"
+                            strokeWidth="2"
+                        />
+
+                        {/* Inner white square - break glass area */}
+                        <rect
+                            x={-deviceType.width / 2 + 5}
+                            y={-deviceType.height / 2 + 5}
+                            width={deviceType.width - 10}
+                            height={deviceType.height - 10}
+                            rx="2"
+                            fill="#FECACA"
+                            stroke="#B91C1C"
+                            strokeWidth="1"
+                        />
+
+                        {/* Cross pattern */}
+                        <line x1="-8" y1="0" x2="8" y2="0" stroke="#991B1B" strokeWidth="2" />
+                        <line x1="0" y1="-8" x2="0" y2="8" stroke="#991B1B" strokeWidth="2" />
+                    </>
+                ) : device.typeId === 'sounder' ? (
+                    <>
+                        {/* Selection ring for sounder */}
+                        {isSelected && (
+                            <circle
+                                r="21"
+                                fill="none"
+                                stroke="#3B82F6"
+                                strokeWidth="2"
+                                strokeDasharray="4 2"
+                            />
+                        )}
+
+                        {/* Sounder body - orange circle */}
+                        <circle r="19" fill="#F97316" stroke="#C2410C" strokeWidth="2" />
+
+                        {/* Inner circle */}
+                        <circle r="12" fill="#FDBA74" stroke="#EA580C" strokeWidth="1.5" />
+
+                        {/* Sound wave arcs */}
+                        <path
+                            d="M -5 -3 Q -8 0 -5 3"
+                            fill="none"
+                            stroke="#7C2D12"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                        />
+                        <path
+                            d="M 5 -3 Q 8 0 5 3"
+                            fill="none"
+                            stroke="#7C2D12"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                        />
+
+                        {/* Center dot */}
+                        <circle r="4" fill="#EA580C" />
+                    </>
                 ) : (
                     <>
                         {/* Selection ring for circular device */}
@@ -231,8 +314,10 @@ function ProjectionGuide({
 
     // Different sizes for different device types
     const isLoopDriver = deviceTypeId === 'loop-driver';
-    const sizeX = isLoopDriver ? 50 * scale : 48 * scale;
-    const sizeY = isLoopDriver ? 30 * scale : 48 * scale;
+    const isMcp = deviceTypeId === 'mcp';
+    const isSounder = deviceTypeId === 'sounder';
+    const sizeX = isLoopDriver ? 50 * scale : isMcp ? 35 * scale : isSounder ? 38 * scale : 48 * scale;
+    const sizeY = isLoopDriver ? 30 * scale : isMcp ? 35 * scale : isSounder ? 38 * scale : 48 * scale;
 
     return (
         <div
@@ -264,6 +349,42 @@ function ProjectionGuide({
                     <line x1="-15" y1="0" x2="15" y2="0" stroke="#3B82F6" strokeWidth="1" opacity="0.5" />
                     <line x1="0" y1="-10" x2="0" y2="10" stroke="#3B82F6" strokeWidth="1" opacity="0.5" />
                     <circle r="3" fill="#3B82F6" opacity="0.8" />
+                </svg>
+            ) : isMcp ? (
+                // Square projection for MCP
+                <svg width={sizeX} height={sizeY} viewBox="-17.5 -17.5 35 35">
+                    <rect
+                        x="-15"
+                        y="-15"
+                        width="30"
+                        height="30"
+                        rx="3"
+                        fill="none"
+                        stroke="#DC2626"
+                        strokeWidth="2"
+                        strokeDasharray="6 3"
+                        opacity="0.7"
+                    />
+                    <rect x="-13" y="-13" width="26" height="26" rx="2" fill="#DC2626" opacity="0.15" />
+                    <line x1="-8" y1="0" x2="8" y2="0" stroke="#DC2626" strokeWidth="1" opacity="0.5" />
+                    <line x1="0" y1="-8" x2="0" y2="8" stroke="#DC2626" strokeWidth="1" opacity="0.5" />
+                    <circle r="2" fill="#DC2626" opacity="0.8" />
+                </svg>
+            ) : isSounder ? (
+                // Circular projection for sounder (orange)
+                <svg width={sizeX} height={sizeY} viewBox="-19 -19 38 38">
+                    <circle
+                        r="17"
+                        fill="none"
+                        stroke="#F97316"
+                        strokeWidth="2"
+                        strokeDasharray="6 3"
+                        opacity="0.7"
+                    />
+                    <circle r="15" fill="#F97316" opacity="0.15" />
+                    <line x1="-10" y1="0" x2="10" y2="0" stroke="#F97316" strokeWidth="1" opacity="0.5" />
+                    <line x1="0" y1="-10" x2="0" y2="10" stroke="#F97316" strokeWidth="1" opacity="0.5" />
+                    <circle r="3" fill="#F97316" opacity="0.8" />
                 </svg>
             ) : (
                 // Circular projection for detectors

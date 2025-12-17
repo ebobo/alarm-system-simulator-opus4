@@ -106,13 +106,31 @@ const LOOP_DRIVER_TERMINALS: TerminalDefinition[] = [
     { id: 'controller', pairIndex: 2, polarity: '+', relativeX: 0, relativeY: 0.5, label: 'CTRL' },
 ];
 
+// Terminal positions for MCP (Manual Call Point):
+// 4 terminals at top, bottom, left, right
+const MCP_TERMINALS: TerminalDefinition[] = [
+    { id: 'top', pairIndex: 0, polarity: '+', relativeX: 0, relativeY: -0.5, label: 'T' },
+    { id: 'right', pairIndex: 1, polarity: '+', relativeX: 0.5, relativeY: 0, label: 'R' },
+    { id: 'bottom', pairIndex: 2, polarity: '+', relativeX: 0, relativeY: 0.5, label: 'B' },
+    { id: 'left', pairIndex: 3, polarity: '+', relativeX: -0.5, relativeY: 0, label: 'L' },
+];
+
+// Terminal positions for Sounder:
+// 4 terminals at top, bottom, left, right
+const SOUNDER_TERMINALS: TerminalDefinition[] = [
+    { id: 'top', pairIndex: 0, polarity: '+', relativeX: 0, relativeY: -0.5, label: 'T' },
+    { id: 'right', pairIndex: 1, polarity: '+', relativeX: 0.5, relativeY: 0, label: 'R' },
+    { id: 'bottom', pairIndex: 2, polarity: '+', relativeX: 0, relativeY: 0.5, label: 'B' },
+    { id: 'left', pairIndex: 3, polarity: '+', relativeX: -0.5, relativeY: 0, label: 'L' },
+];
+
 /**
  * Registry of all available device types
  */
 export const DEVICE_TYPES: Record<string, DeviceType> = {
     'autroguard-base': {
         id: 'autroguard-base',
-        name: 'AutroGuard Base',
+        name: 'AG Base',
         category: 'detector',
         description: 'V-430 detector base with 4 wire pairs',
         width: 40,
@@ -127,6 +145,24 @@ export const DEVICE_TYPES: Record<string, DeviceType> = {
         width: 50,
         height: 30,
         terminals: LOOP_DRIVER_TERMINALS,
+    },
+    'mcp': {
+        id: 'mcp',
+        name: 'MCP',
+        category: 'mcp',
+        description: 'Manual Call Point for fire alarm activation',
+        width: 35,
+        height: 35,
+        terminals: MCP_TERMINALS,
+    },
+    'sounder': {
+        id: 'sounder',
+        name: 'Sounder',
+        category: 'sounder',
+        description: 'Fire alarm sounder/bell',
+        width: 38,
+        height: 38,
+        terminals: SOUNDER_TERMINALS,
     },
 };
 

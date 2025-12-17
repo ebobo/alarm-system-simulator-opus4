@@ -71,12 +71,12 @@ function DraggableDeviceItem({ deviceType }: DraggableDeviceItemProps) {
         >
             <div className="flex items-center gap-3">
                 {/* Device icon - different shape based on category */}
-                <div className={`w-10 h-10 ${styles.bg} rounded-lg flex items-center justify-center ${styles.border} border`}>
+                <div className={`w-8 h-8 ${styles.bg} rounded-lg flex items-center justify-center ${styles.border} border`}>
                     {deviceType.category === 'controller' ? (
                         // Rectangle icon for controller/loop driver
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            className={`w-6 h-4 ${styles.icon}`}
+                            className={`w-5 h-3 ${styles.icon}`}
                             fill="none"
                             viewBox="0 0 24 16"
                             stroke="currentColor"
@@ -84,11 +84,36 @@ function DraggableDeviceItem({ deviceType }: DraggableDeviceItemProps) {
                             <rect x="1" y="1" width="22" height="14" rx="2" strokeWidth="2" />
                             <text x="12" y="11" textAnchor="middle" fontSize="8" fill="currentColor" stroke="none">LD</text>
                         </svg>
+                    ) : deviceType.category === 'mcp' ? (
+                        // Square icon for MCP (Manual Call Point)
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className={`w-4 h-4 ${styles.icon}`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <rect x="2" y="2" width="20" height="20" rx="2" strokeWidth="2" />
+                            <path d="M7 12h10M12 7v10" strokeWidth="2" strokeLinecap="round" />
+                        </svg>
+                    ) : deviceType.category === 'sounder' ? (
+                        // Circle with sound waves for sounder
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className={`w-4 h-4 ${styles.icon}`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <circle cx="12" cy="12" r="8" strokeWidth="2" />
+                            <path d="M9 10 Q7 12 9 14" strokeWidth="1.5" strokeLinecap="round" />
+                            <path d="M15 10 Q17 12 15 14" strokeWidth="1.5" strokeLinecap="round" />
+                        </svg>
                     ) : (
                         // Circle icon for detectors
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            className={`w-5 h-5 ${styles.icon}`}
+                            className={`w-4 h-4 ${styles.icon}`}
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"

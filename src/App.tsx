@@ -19,35 +19,73 @@ import type { ProjectListEntry } from './types/storage';
 // SVG Drag preview component - shows the device icon
 function DeviceDragPreview({ deviceTypeId }: { deviceTypeId: string | null }) {
   if (deviceTypeId === 'loop-driver') {
-    // Loop driver preview - rectangle with 2 terminals
+    // Loop driver preview - rectangle with terminals on left, right, bottom
     return (
-      <svg width="60" height="40" viewBox="-30 -20 60 40" className="drop-shadow-lg">
-        <rect x="-28" y="-18" width="56" height="36" rx="3" fill="#F8FAFC" stroke="#1E293B" strokeWidth="2" />
-        <rect x="-20" y="-10" width="40" height="20" rx="2" fill="#E2E8F0" stroke="#64748B" strokeWidth="1.5" />
-        <text x="0" y="4" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#334155">LD</text>
-        {/* Terminals - 1 top centered, 1 bottom centered */}
-        <circle cx="0" cy="-18" r="4" fill="#F97316" stroke="#C2410C" strokeWidth="1.5" />
-        <circle cx="0" cy="18" r="4" fill="#38BDF8" stroke="#0284C7" strokeWidth="1.5" />
+      <svg width="50" height="30" viewBox="-25 -15 50 30" className="drop-shadow-lg">
+        <rect x="-23" y="-13" width="46" height="26" rx="3" fill="#F8FAFC" stroke="#1E293B" strokeWidth="2" />
+        <rect x="-15" y="-7" width="30" height="14" rx="2" fill="#E2E8F0" stroke="#64748B" strokeWidth="1.5" />
+        <text x="0" y="3" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#334155">LD</text>
+        {/* Terminals - left, right, bottom */}
+        <circle cx="-23" cy="0" r="4" fill="#F97316" stroke="#C2410C" strokeWidth="1.5" />
+        <circle cx="23" cy="0" r="4" fill="#38BDF8" stroke="#0284C7" strokeWidth="1.5" />
+        <circle cx="0" cy="13" r="4" fill="#3B82F6" stroke="#1D4ED8" strokeWidth="1.5" />
+      </svg>
+    );
+  }
+
+  if (deviceTypeId === 'mcp') {
+    // MCP preview - red square with cross pattern
+    return (
+      <svg width="35" height="35" viewBox="-17.5 -17.5 35 35" className="drop-shadow-lg">
+        <rect x="-15" y="-15" width="30" height="30" rx="3" fill="#DC2626" stroke="#991B1B" strokeWidth="2" />
+        <rect x="-10" y="-10" width="20" height="20" rx="2" fill="#FECACA" stroke="#B91C1C" strokeWidth="1" />
+        {/* Cross pattern */}
+        <line x1="-6" y1="0" x2="6" y2="0" stroke="#991B1B" strokeWidth="2" />
+        <line x1="0" y1="-6" x2="0" y2="6" stroke="#991B1B" strokeWidth="2" />
+        {/* Terminals */}
+        <circle cx="0" cy="-15" r="3" fill="#FBBF24" stroke="#B45309" strokeWidth="1" />
+        <circle cx="15" cy="0" r="3" fill="#FBBF24" stroke="#B45309" strokeWidth="1" />
+        <circle cx="0" cy="15" r="3" fill="#FBBF24" stroke="#B45309" strokeWidth="1" />
+        <circle cx="-15" cy="0" r="3" fill="#FBBF24" stroke="#B45309" strokeWidth="1" />
+      </svg>
+    );
+  }
+
+  if (deviceTypeId === 'sounder') {
+    // Sounder preview - orange circle with sound waves
+    return (
+      <svg width="38" height="38" viewBox="-19 -19 38 38" className="drop-shadow-lg">
+        <circle r="17" fill="#F97316" stroke="#C2410C" strokeWidth="2" />
+        <circle r="11" fill="#FDBA74" stroke="#EA580C" strokeWidth="1.5" />
+        {/* Sound wave arcs */}
+        <path d="M -4 -2 Q -6 0 -4 2" fill="none" stroke="#7C2D12" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M 4 -2 Q 6 0 4 2" fill="none" stroke="#7C2D12" strokeWidth="1.5" strokeLinecap="round" />
+        <circle r="3" fill="#EA580C" />
+        {/* Terminals */}
+        <circle cx="0" cy="-17" r="3" fill="#FBBF24" stroke="#B45309" strokeWidth="1" />
+        <circle cx="17" cy="0" r="3" fill="#FBBF24" stroke="#B45309" strokeWidth="1" />
+        <circle cx="0" cy="17" r="3" fill="#FBBF24" stroke="#B45309" strokeWidth="1" />
+        <circle cx="-17" cy="0" r="3" fill="#FBBF24" stroke="#B45309" strokeWidth="1" />
       </svg>
     );
   }
 
   // Default - detector preview (circle)
   return (
-    <svg width="60" height="60" viewBox="-30 -30 60 60" className="drop-shadow-lg">
+    <svg width="40" height="40" viewBox="-20 -20 40 40" className="drop-shadow-lg">
       {/* Outer circle */}
-      <circle r="25" fill="#F8FAFC" stroke="#1E293B" strokeWidth="2" />
+      <circle r="18" fill="#F8FAFC" stroke="#1E293B" strokeWidth="2" />
       {/* Inner circle */}
-      <circle r="16" fill="#E2E8F0" stroke="#64748B" strokeWidth="1.5" />
+      <circle r="12" fill="#E2E8F0" stroke="#64748B" strokeWidth="1.5" />
       {/* Center indicator */}
-      <circle r="6" fill="#CBD5E1" stroke="#94A3B8" strokeWidth="1" />
+      <circle r="4" fill="#CBD5E1" stroke="#94A3B8" strokeWidth="1" />
       {/* Center dot */}
-      <circle r="2" fill="#64748B" />
+      <circle r="1.5" fill="#64748B" />
       {/* Terminals */}
-      <circle cx="0" cy="-22" r="4" fill="#FBBF24" stroke="#B45309" strokeWidth="1.5" />
-      <circle cx="22" cy="0" r="4" fill="#FBBF24" stroke="#B45309" strokeWidth="1.5" />
-      <circle cx="0" cy="22" r="4" fill="#FBBF24" stroke="#B45309" strokeWidth="1.5" />
-      <circle cx="-22" cy="0" r="4" fill="#FBBF24" stroke="#B45309" strokeWidth="1.5" />
+      <circle cx="0" cy="-16" r="3" fill="#FBBF24" stroke="#B45309" strokeWidth="1" />
+      <circle cx="16" cy="0" r="3" fill="#FBBF24" stroke="#B45309" strokeWidth="1" />
+      <circle cx="0" cy="16" r="3" fill="#FBBF24" stroke="#B45309" strokeWidth="1" />
+      <circle cx="-16" cy="0" r="3" fill="#FBBF24" stroke="#B45309" strokeWidth="1" />
     </svg>
   );
 }
