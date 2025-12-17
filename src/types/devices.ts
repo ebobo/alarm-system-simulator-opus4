@@ -96,12 +96,14 @@ const AUTROGUARD_TERMINALS: TerminalDefinition[] = [
 ];
 
 // Terminal positions for Loop Driver:
-// 1 terminal on top (loop in), 1 on bottom (loop out), centered
+// Left (loop in), Right (loop out), Bottom (controller)
 const LOOP_DRIVER_TERMINALS: TerminalDefinition[] = [
-    // Top connector - Loop In (orange)
-    { id: 'loop-in', pairIndex: 0, polarity: '+', relativeX: 0, relativeY: -0.5, label: 'IN' },
-    // Bottom connector - Loop Out (light blue)
-    { id: 'loop-out', pairIndex: 1, polarity: '+', relativeX: 0, relativeY: 0.5, label: 'OUT' },
+    // Left connector - Loop In (orange)
+    { id: 'loop-in', pairIndex: 0, polarity: '+', relativeX: -0.5, relativeY: 0, label: 'IN' },
+    // Right connector - Loop Out (light blue)
+    { id: 'loop-out', pairIndex: 1, polarity: '+', relativeX: 0.5, relativeY: 0, label: 'OUT' },
+    // Bottom connector - Controller (dark blue)
+    { id: 'controller', pairIndex: 2, polarity: '+', relativeX: 0, relativeY: 0.5, label: 'CTRL' },
 ];
 
 /**
@@ -113,8 +115,8 @@ export const DEVICE_TYPES: Record<string, DeviceType> = {
         name: 'AutroGuard Base',
         category: 'detector',
         description: 'V-430 detector base with 4 wire pairs',
-        width: 50,
-        height: 50,
+        width: 40,
+        height: 40,
         terminals: AUTROGUARD_TERMINALS,
     },
     'loop-driver': {
@@ -122,8 +124,8 @@ export const DEVICE_TYPES: Record<string, DeviceType> = {
         name: 'Loop Driver',
         category: 'controller',
         description: 'Loop driver module with loop in/out and controller connection',
-        width: 60,
-        height: 35,
+        width: 50,
+        height: 30,
         terminals: LOOP_DRIVER_TERMINALS,
     },
 };

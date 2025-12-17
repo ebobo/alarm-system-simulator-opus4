@@ -150,7 +150,7 @@ function DraggableDevice({
                         {/* Selection ring for circular device */}
                         {isSelected && (
                             <circle
-                                r="28"
+                                r="22"
                                 fill="none"
                                 stroke="#3B82F6"
                                 strokeWidth="2"
@@ -159,9 +159,9 @@ function DraggableDevice({
                         )}
 
                         {/* Device base - circles */}
-                        <circle r="25" fill="#F8FAFC" stroke="#1E293B" strokeWidth="2" />
-                        <circle r="16" fill="#E2E8F0" stroke="#64748B" strokeWidth="1.5" />
-                        <circle r="6" fill="#CBD5E1" stroke="#94A3B8" strokeWidth="1" />
+                        <circle r="20" fill="#F8FAFC" stroke="#1E293B" strokeWidth="2" />
+                        <circle r="13" fill="#E2E8F0" stroke="#64748B" strokeWidth="1.5" />
+                        <circle r="5" fill="#CBD5E1" stroke="#94A3B8" strokeWidth="1" />
                         <circle r="2" fill="#64748B" />
                     </>
                 )}
@@ -231,8 +231,8 @@ function ProjectionGuide({
 
     // Different sizes for different device types
     const isLoopDriver = deviceTypeId === 'loop-driver';
-    const sizeX = isLoopDriver ? 70 * scale : 60 * scale;
-    const sizeY = isLoopDriver ? 45 * scale : 60 * scale;
+    const sizeX = isLoopDriver ? 50 * scale : 48 * scale;
+    const sizeY = isLoopDriver ? 30 * scale : 48 * scale;
 
     return (
         <div
@@ -247,12 +247,12 @@ function ProjectionGuide({
         >
             {isLoopDriver ? (
                 // Rectangular projection for loop driver
-                <svg width={sizeX} height={sizeY} viewBox="-35 -22.5 70 45">
+                <svg width={sizeX} height={sizeY} viewBox="-25 -15 50 30">
                     <rect
-                        x="-32"
-                        y="-20"
-                        width="64"
-                        height="40"
+                        x="-22"
+                        y="-13"
+                        width="44"
+                        height="26"
                         rx="4"
                         fill="none"
                         stroke="#3B82F6"
@@ -260,25 +260,25 @@ function ProjectionGuide({
                         strokeDasharray="6 3"
                         opacity="0.7"
                     />
-                    <rect x="-30" y="-18" width="60" height="36" rx="3" fill="#3B82F6" opacity="0.15" />
+                    <rect x="-20" y="-11" width="40" height="22" rx="3" fill="#3B82F6" opacity="0.15" />
                     <line x1="-15" y1="0" x2="15" y2="0" stroke="#3B82F6" strokeWidth="1" opacity="0.5" />
                     <line x1="0" y1="-10" x2="0" y2="10" stroke="#3B82F6" strokeWidth="1" opacity="0.5" />
                     <circle r="3" fill="#3B82F6" opacity="0.8" />
                 </svg>
             ) : (
                 // Circular projection for detectors
-                <svg width={sizeX} height={sizeY} viewBox="-30 -30 60 60">
+                <svg width={sizeX} height={sizeY} viewBox="-24 -24 48 48">
                     <circle
-                        r="28"
+                        r="22"
                         fill="none"
                         stroke="#3B82F6"
                         strokeWidth="2"
                         strokeDasharray="6 3"
                         opacity="0.7"
                     />
-                    <circle r="25" fill="#3B82F6" opacity="0.15" />
-                    <line x1="-15" y1="0" x2="15" y2="0" stroke="#3B82F6" strokeWidth="1" opacity="0.5" />
-                    <line x1="0" y1="-15" x2="0" y2="15" stroke="#3B82F6" strokeWidth="1" opacity="0.5" />
+                    <circle r="20" fill="#3B82F6" opacity="0.15" />
+                    <line x1="-12" y1="0" x2="12" y2="0" stroke="#3B82F6" strokeWidth="1" opacity="0.5" />
+                    <line x1="0" y1="-12" x2="0" y2="12" stroke="#3B82F6" strokeWidth="1" opacity="0.5" />
                     <circle r="3" fill="#3B82F6" opacity="0.8" />
                 </svg>
             )}
