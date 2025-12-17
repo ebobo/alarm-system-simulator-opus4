@@ -228,6 +228,60 @@ function DraggableDevice({
                         {/* Center dot */}
                         <circle r="4" fill="#EA580C" />
                     </>
+                ) : device.typeId === 'panel' ? (
+                    <>
+                        {/* Selection ring for Panel */}
+                        {isSelected && (
+                            <rect
+                                x={-deviceType.width / 2 - 4}
+                                y={-deviceType.height / 2 - 4}
+                                width={deviceType.width + 8}
+                                height={deviceType.height + 8}
+                                rx="6"
+                                fill="none"
+                                stroke="#3B82F6"
+                                strokeWidth="2"
+                                strokeDasharray="4 2"
+                            />
+                        )}
+
+                        {/* Panel body - white outer rectangle */}
+                        <rect
+                            x={-deviceType.width / 2}
+                            y={-deviceType.height / 2}
+                            width={deviceType.width}
+                            height={deviceType.height}
+                            rx="4"
+                            fill="#F8FAFC"
+                            stroke="#1E293B"
+                            strokeWidth="2"
+                        />
+
+                        {/* Inner rectangle */}
+                        <rect
+                            x={-deviceType.width / 2 + 8}
+                            y={-deviceType.height / 2 + 8}
+                            width={deviceType.width - 16}
+                            height={deviceType.height - 16}
+                            rx="3"
+                            fill="#E2E8F0"
+                            stroke="#64748B"
+                            strokeWidth="1.5"
+                        />
+
+                        {/* P Label */}
+                        <text
+                            x="0"
+                            y="4"
+                            textAnchor="middle"
+                            fontSize="14"
+                            fontWeight="bold"
+                            fill="#0891B2"
+                            style={{ pointerEvents: 'none' }}
+                        >
+                            P
+                        </text>
+                    </>
                 ) : (
                     <>
                         {/* Selection ring for circular device */}
@@ -264,6 +318,9 @@ function DraggableDevice({
                             } else if (terminal.id === 'controller') {
                                 return { fill: '#3B82F6', stroke: '#1D4ED8' }; // Dark blue for controller
                             }
+                        }
+                        if (device.typeId === 'panel') {
+                            return { fill: '#22D3EE', stroke: '#0891B2' }; // Cyan for panel
                         }
                         return { fill: '#FBBF24', stroke: '#B45309' }; // Yellow default
                     };
@@ -314,10 +371,11 @@ function ProjectionGuide({
 
     // Different sizes for different device types
     const isLoopDriver = deviceTypeId === 'loop-driver';
+    const isPanel = deviceTypeId === 'panel';
     const isMcp = deviceTypeId === 'mcp';
     const isSounder = deviceTypeId === 'sounder';
-    const sizeX = isLoopDriver ? 50 * scale : isMcp ? 35 * scale : isSounder ? 38 * scale : 48 * scale;
-    const sizeY = isLoopDriver ? 30 * scale : isMcp ? 35 * scale : isSounder ? 38 * scale : 48 * scale;
+    const sizeX = isLoopDriver ? 50 * scale : isPanel ? 35 * scale : isMcp ? 35 * scale : isSounder ? 38 * scale : 48 * scale;
+    const sizeY = isLoopDriver ? 30 * scale : isPanel ? 25 * scale : isMcp ? 35 * scale : isSounder ? 38 * scale : 48 * scale;
 
     return (
         <div
@@ -349,6 +407,26 @@ function ProjectionGuide({
                     <line x1="-15" y1="0" x2="15" y2="0" stroke="#3B82F6" strokeWidth="1" opacity="0.5" />
                     <line x1="0" y1="-10" x2="0" y2="10" stroke="#3B82F6" strokeWidth="1" opacity="0.5" />
                     <circle r="3" fill="#3B82F6" opacity="0.8" />
+                </svg>
+            ) : isPanel ? (
+                // Smaller rectangular projection for panel
+                <svg width={sizeX} height={sizeY} viewBox="-17.5 -12.5 35 25">
+                    <rect
+                        x="-15"
+                        y="-10"
+                        width="30"
+                        height="20"
+                        rx="3"
+                        fill="none"
+                        stroke="#22D3EE"
+                        strokeWidth="2"
+                        strokeDasharray="6 3"
+                        opacity="0.7"
+                    />
+                    <rect x="-13" y="-8" width="26" height="16" rx="2" fill="#22D3EE" opacity="0.15" />
+                    <line x1="-10" y1="0" x2="10" y2="0" stroke="#22D3EE" strokeWidth="1" opacity="0.5" />
+                    <line x1="0" y1="-6" x2="0" y2="6" stroke="#22D3EE" strokeWidth="1" opacity="0.5" />
+                    <circle r="2" fill="#22D3EE" opacity="0.8" />
                 </svg>
             ) : isMcp ? (
                 // Square projection for MCP

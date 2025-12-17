@@ -72,6 +72,19 @@ function DeviceDragPreview({ deviceTypeId }: { deviceTypeId: string | null }) {
     );
   }
 
+  if (deviceTypeId === 'panel') {
+    // Panel preview - smaller rectangle with "P" label and top terminal only
+    return (
+      <svg width="35" height="25" viewBox="-17.5 -12.5 35 25" className="drop-shadow-lg">
+        <rect x="-16" y="-11" width="32" height="22" rx="3" fill="#F8FAFC" stroke="#1E293B" strokeWidth="2" />
+        <rect x="-10" y="-6" width="20" height="12" rx="2" fill="#E2E8F0" stroke="#64748B" strokeWidth="1.5" />
+        <text x="0" y="3" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#0891B2">P</text>
+        {/* Terminal - top only */}
+        <circle cx="0" cy="-11" r="3" fill="#22D3EE" stroke="#0891B2" strokeWidth="1.5" />
+      </svg>
+    );
+  }
+
   // Default - detector preview (circle)
   return (
     <svg width="40" height="40" viewBox="-20 -20 40 40" className="drop-shadow-lg">
@@ -124,6 +137,13 @@ function App() {
   // View state
   const [activeView, setActiveView] = useState<'floorplan' | 'panel'>('floorplan');
   const [projectList, setProjectList] = useState<ProjectListEntry[]>([]);
+
+  // Compute if panel view should be enabled
+  const hasPanelDevice = placedDevices.some(d => d.typeId === 'panel');
+  const isProjectSaved = currentProjectName !== 'New Project';
+  const isPanelEnabled = hasPanelDevice && isProjectSaved;
+  const panelDisabledReason: 'no-panel' | 'not-saved' | undefined =
+    !isProjectSaved ? 'not-saved' : !hasPanelDevice ? 'no-panel' : undefined;
 
   // Projection position (where the device will land)
   const [projectionPosition, setProjectionPosition] = useState<{ x: number; y: number } | null>(null);
@@ -703,7 +723,12 @@ function App() {
           {/* Top Bar */}
           <div className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6">
             <div className="flex items-center gap-4">
-              <ViewTabs activeView={activeView} onViewChange={setActiveView} />
+              <ViewTabs
+                activeView={activeView}
+                onViewChange={setActiveView}
+                isPanelEnabled={isPanelEnabled}
+                panelDisabledReason={panelDisabledReason}
+              />
               {activeView === 'floorplan' && (
                 <div>
                   <h2 className="text-lg font-semibold text-gray-800">Floor Plan Viewer</h2>
@@ -782,7 +807,11 @@ function App() {
               />
             </div>
           ) : (
-            <PanelView projectName={currentProjectName} />
+            <PanelView
+              projectName={currentProjectName}
+              placedDevices={placedDevices}
+              connections={connections}
+            />
           )}
         </div>
 

@@ -124,6 +124,12 @@ const SOUNDER_TERMINALS: TerminalDefinition[] = [
     { id: 'left', pairIndex: 3, polarity: '+', relativeX: -0.5, relativeY: 0, label: 'L' },
 ];
 
+// Terminal positions for Panel:
+// Top connector only (for loop driver connection)
+const PANEL_TERMINALS: TerminalDefinition[] = [
+    { id: 'top', pairIndex: 0, polarity: '+', relativeX: 0, relativeY: -0.5, label: 'T' },
+];
+
 /**
  * Registry of all available device types
  */
@@ -163,6 +169,15 @@ export const DEVICE_TYPES: Record<string, DeviceType> = {
         width: 38,
         height: 38,
         terminals: SOUNDER_TERMINALS,
+    },
+    'panel': {
+        id: 'panel',
+        name: 'Panel',
+        category: 'controller',
+        description: 'AutroSafe fire alarm control panel',
+        width: 35,
+        height: 25,
+        terminals: PANEL_TERMINALS,
     },
 };
 

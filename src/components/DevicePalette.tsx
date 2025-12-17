@@ -72,7 +72,19 @@ function DraggableDeviceItem({ deviceType }: DraggableDeviceItemProps) {
             <div className="flex items-center gap-3">
                 {/* Device icon - different shape based on category */}
                 <div className={`w-8 h-8 ${styles.bg} rounded-lg flex items-center justify-center ${styles.border} border`}>
-                    {deviceType.category === 'controller' ? (
+                    {deviceType.id === 'panel' ? (
+                        // Panel icon - rectangle with "P" label
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className={`w-5 h-3 ${styles.icon}`}
+                            fill="none"
+                            viewBox="0 0 24 16"
+                            stroke="currentColor"
+                        >
+                            <rect x="1" y="1" width="22" height="14" rx="2" strokeWidth="2" />
+                            <text x="12" y="11" textAnchor="middle" fontSize="8" fill="currentColor" stroke="none">P</text>
+                        </svg>
+                    ) : deviceType.category === 'controller' ? (
                         // Rectangle icon for controller/loop driver
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
