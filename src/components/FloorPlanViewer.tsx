@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, useEffect } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { TransformWrapper, TransformComponent, useControls } from 'react-zoom-pan-pinch';
 import type { ReactZoomPanPinchRef } from 'react-zoom-pan-pinch';
 import { useDroppable } from '@dnd-kit/core';
@@ -85,7 +85,6 @@ export default function FloorPlanViewer({
     alignmentGuides,
 }: FloorPlanViewerProps) {
     const transformRef = useRef<ReactZoomPanPinchRef>(null);
-    const svgContainerRef = useRef<HTMLDivElement>(null);
 
     // Local state for viewport transform (for device positioning)
     const [localTransform, setLocalTransform] = useState<ViewportTransform>({
@@ -98,34 +97,6 @@ export default function FloorPlanViewer({
     const { isOver, setNodeRef } = useDroppable({
         id: 'floor-plan-drop-zone',
     });
-
-    // Apply visual highlight to selected room label
-    useEffect(() => {
-        if (!svgContainerRef.current) return;
-
-        // Reset all room labels to default color
-        const allLabels = svgContainerRef.current.querySelectorAll('[data-unique-label]');
-        allLabels.forEach((el) => {
-            (el as SVGTextElement).style.fill = '#333';
-            (el as SVGTextElement).style.fontWeight = '500';
-        });
-
-        // Highlight selected room label in blue
-        if (selectedRoomId) {
-            // Find the room rect to get its unique label
-            const roomRect = svgContainerRef.current.querySelector(`[data-room-id="${selectedRoomId}"]`);
-            if (roomRect) {
-                const roomLabel = roomRect.getAttribute('data-room-label');
-                if (roomLabel) {
-                    const labelEl = svgContainerRef.current.querySelector(`[data-unique-label="${roomLabel}"]`);
-                    if (labelEl) {
-                        (labelEl as SVGTextElement).style.fill = '#2563EB';
-                        (labelEl as SVGTextElement).style.fontWeight = '700';
-                    }
-                }
-            }
-        }
-    }, [selectedRoomId, svgContent]);
 
     // Handle transform changes from zoom/pan
     const handleTransformChange = useCallback((ref: ReactZoomPanPinchRef) => {
@@ -199,7 +170,6 @@ export default function FloorPlanViewer({
                 >
                     {/* Floor plan SVG */}
                     <div
-                        ref={svgContainerRef}
                         className="bg-white rounded-lg shadow-2xl relative"
                         dangerouslySetInnerHTML={{ __html: svgContent }}
                         onClick={handleSvgClick}

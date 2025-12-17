@@ -427,7 +427,8 @@ export function generateFloorPlan(config: RoomConfig): string {
           style="cursor: pointer;"/>
     <text x="${corridorX + corridorWidth / 2}" y="${corridorY + rowHeight / 2}" 
           text-anchor="middle" dominant-baseline="middle"
-          font-size="11" font-weight="500" fill="#333" style="pointer-events: none;">
+          font-size="11" font-weight="500" fill="#333" 
+          data-unique-label="Public Area" style="pointer-events: none;">
       Public Area
     </text>
 
