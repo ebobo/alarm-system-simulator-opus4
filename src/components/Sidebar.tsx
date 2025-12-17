@@ -8,6 +8,9 @@ interface SidebarProps {
     currentProjectId: string | null;
     currentProjectName: string;
     onSelectProject: (id: string) => void;
+    activeView: 'floorplan' | 'panel';
+    onImportConfig?: () => void;
+    onExportConfig?: () => void;
 }
 
 export default function Sidebar({
@@ -17,7 +20,10 @@ export default function Sidebar({
     projectList,
     currentProjectId,
     currentProjectName,
-    onSelectProject
+    onSelectProject,
+    activeView,
+    onImportConfig,
+    onExportConfig
 }: SidebarProps) {
     // Format relative time for display
     const formatRelativeTime = (isoDate: string): string => {
@@ -61,7 +67,7 @@ export default function Sidebar({
 
                 <div className="space-y-2">
                     {/* Current unsaved project (if working on Generated Plan) */}
-                    {currentProjectName === 'Generated Plan' && (
+                    {currentProjectName === 'New Project' && (
                         <div className="bg-slate-700/50 rounded-lg p-3 border border-orange-500/50 group">
                             <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 bg-orange-500/20 rounded-lg flex items-center justify-center">
@@ -70,7 +76,7 @@ export default function Sidebar({
                                     </svg>
                                 </div>
                                 <div className="flex-1">
-                                    <p className="text-sm font-medium text-white">Generated Plan</p>
+                                    <p className="text-sm font-medium text-white">New Project</p>
                                     <p className="text-xs text-orange-400">Unsaved</p>
                                 </div>
                                 <div className="w-2 h-2 rounded-full bg-orange-400"></div>
@@ -111,7 +117,7 @@ export default function Sidebar({
                     })}
 
                     {/* Empty state */}
-                    {projectList.length === 0 && currentProjectName !== 'Generated Plan' && (
+                    {projectList.length === 0 && currentProjectName !== 'New Project' && (
                         <div className="text-center py-4 text-slate-500 text-sm">
                             No saved projects
                         </div>
@@ -119,48 +125,77 @@ export default function Sidebar({
                 </div>
             </div>
 
-            {/* Actions */}
+            {/* Actions - view-specific */}
             <div className="p-4 border-t border-slate-700 space-y-3">
-                <button
-                    onClick={onExport}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 
-                     rounded-lg transition-all duration-200 text-sm font-medium"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Export Data
-                </button>
+                {activeView === 'floorplan' ? (
+                    <>
+                        <button
+                            onClick={onExport}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 
+                             rounded-lg transition-all duration-200 text-sm font-medium"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Export Data
+                        </button>
 
-                <button
-                    onClick={onOpenConfig}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 
-                     rounded-lg transition-all duration-200 text-sm font-medium"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    Configure Rooms
-                </button>
+                        <button
+                            onClick={onOpenConfig}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 
+                             rounded-lg transition-all duration-200 text-sm font-medium"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            Configure Rooms
+                        </button>
 
-                <button
-                    onClick={onGenerate}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 
-                     bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600
-                     rounded-lg transition-all duration-200 text-sm font-semibold shadow-lg shadow-orange-500/25"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Generate New Plan
-                </button>
+                        <button
+                            onClick={onGenerate}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 
+                             bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600
+                             rounded-lg transition-all duration-200 text-sm font-semibold shadow-lg shadow-orange-500/25"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Generate New Plan
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <button
+                            onClick={onImportConfig}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 
+                             bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600
+                             rounded-lg transition-all duration-200 text-sm font-semibold shadow-lg shadow-orange-500/25"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            Import Config
+                        </button>
+
+                        <button
+                            onClick={onExportConfig}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 
+                             rounded-lg transition-all duration-200 text-sm font-medium"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Export Config
+                        </button>
+                    </>
+                )}
             </div>
 
             {/* Footer */}
             <div className="p-4 border-t border-slate-700">
                 <p className="text-xs text-slate-500 text-center">
-                    Stage 1: Floor Plan Viewer
+                    {activeView === 'floorplan' ? 'Floor Plan Designer' : 'Panel Simulator'}
                 </p>
             </div>
         </div>

@@ -6,6 +6,8 @@ import Sidebar from './components/Sidebar';
 import DevicePalette from './components/DevicePalette';
 import ConfigModal from './components/ConfigModal';
 import SaveNameDialog from './components/SaveNameDialog';
+import ViewTabs from './components/ViewTabs';
+import PanelView from './views/PanelView';
 import { generateFloorPlan, defaultConfig } from './utils/floorPlanGenerator';
 import { useCoordinates } from './hooks/useCoordinates';
 import { generateInstanceId, generateSerialNumber, getDeviceType } from './types/devices';
@@ -117,7 +119,10 @@ function App() {
 
   // Project management state
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
-  const [currentProjectName, setCurrentProjectName] = useState('Generated Plan');
+  const [currentProjectName, setCurrentProjectName] = useState('New Project');
+
+  // View state
+  const [activeView, setActiveView] = useState<'floorplan' | 'panel'>('floorplan');
   const [projectList, setProjectList] = useState<ProjectListEntry[]>([]);
 
   // Projection position (where the device will land)
@@ -183,7 +188,7 @@ function App() {
       const initialPlan = generateFloorPlan(defaultConfig);
       setSvgContent(initialPlan);
       setCurrentProjectId(null);
-      setCurrentProjectName('Generated Plan');
+      setCurrentProjectName('New Project');
     }
   }, []);
 
@@ -195,7 +200,7 @@ function App() {
     setSelectedDeviceId(null);
     // Reset to new unsaved project
     setCurrentProjectId(null);
-    setCurrentProjectName('Generated Plan');
+    setCurrentProjectName('New Project');
   };
 
   const handleConfigApply = (newConfig: RoomConfig) => {
@@ -207,13 +212,13 @@ function App() {
     setSelectedDeviceId(null);
     // Reset to unsaved state
     setCurrentProjectId(null);
-    setCurrentProjectName('Generated Plan');
+    setCurrentProjectName('New Project');
   };
 
   // Handle save button click
   const handleSave = () => {
     // If project name is "Generated Plan", show dialog to get name
-    if (currentProjectName === 'Generated Plan') {
+    if (currentProjectName === 'New Project') {
       setShowSaveNameDialog(true);
     } else {
       // Save with existing name
@@ -284,7 +289,7 @@ function App() {
     setConnections([]);
     setSelectedDeviceId(null);
     setCurrentProjectId(null);
-    setCurrentProjectName('Generated Plan');
+    setCurrentProjectName('New Project');
     setSaveNotification('Project deleted');
     setTimeout(() => setSaveNotification(null), 2000);
   };
@@ -690,18 +695,30 @@ function App() {
           currentProjectId={currentProjectId}
           currentProjectName={currentProjectName}
           onSelectProject={handleSelectProject}
+          activeView={activeView}
         />
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col">
           {/* Top Bar */}
           <div className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-800">Floor Plan Viewer</h2>
-              <p className="text-xs text-gray-500">
-                {config.offices} offices • {config.meetingRooms} meeting rooms • {config.toilets} toilets
-                {placedDevices.length > 0 && ` • ${placedDevices.length} device${placedDevices.length !== 1 ? 's' : ''}`}
-              </p>
+            <div className="flex items-center gap-4">
+              <ViewTabs activeView={activeView} onViewChange={setActiveView} />
+              {activeView === 'floorplan' && (
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-800">Floor Plan Viewer</h2>
+                  <p className="text-xs text-gray-500">
+                    {config.offices} offices • {config.meetingRooms} meeting rooms • {config.toilets} toilets
+                    {placedDevices.length > 0 && ` • ${placedDevices.length} device${placedDevices.length !== 1 ? 's' : ''}`}
+                  </p>
+                </div>
+              )}
+              {activeView === 'panel' && (
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-800">Panel Simulator</h2>
+                  <p className="text-xs text-gray-500">{currentProjectName} - AutroSafe Panel</p>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-3">
               {/* Save notification */}
@@ -714,83 +731,94 @@ function App() {
                 </span>
               )}
 
-              <button
-                onClick={handleNewProject}
-                className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                New
-              </button>
-              <button
-                onClick={handleSave}
-                className="px-3 py-1.5 text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors"
-              >
-                Save
-              </button>
-              <button
-                onClick={handleDelete}
-                className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
-              >
-                Delete
-              </button>
+              {/* View-specific buttons */}
+              {activeView === 'floorplan' && (
+                <>
+                  <button
+                    onClick={handleNewProject}
+                    className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  >
+                    New
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    className="px-3 py-1.5 text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                  >
+                    Delete
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
-          {/* Viewer */}
-          <div className="flex-1 p-4" onClick={handleFloorPlanClick}>
-            <FloorPlanViewer
-              svgContent={svgContent}
-              placedDevices={placedDevices}
-              selectedDeviceId={selectedDeviceId}
-              selectedWireId={selectedWireId}
-              selectedRoomId={selectedRoom?.id ?? null}
-              activeDragId={activeDragId}
-              projectionPosition={projectionPosition}
-              projectionDeviceTypeId={getDraggedDeviceTypeId()}
-              onTransformChange={handleTransformChange}
-              onDeviceClick={handleDeviceClick}
-              onWireClick={handleWireClick}
-              onRoomClick={handleRoomClick}
-              connections={connections}
-              drawingWire={drawingWire}
-              onWireStart={handleWireStart}
-              onWireEnd={handleWireEnd}
-              dragDelta={dragDelta}
-              alignmentGuides={alignmentGuides}
-            />
-          </div>
+          {/* Content Area - conditionally show Floor Plan or Panel */}
+          {activeView === 'floorplan' ? (
+            <div className="flex-1 p-4" onClick={handleFloorPlanClick}>
+              <FloorPlanViewer
+                svgContent={svgContent}
+                placedDevices={placedDevices}
+                selectedDeviceId={selectedDeviceId}
+                selectedWireId={selectedWireId}
+                selectedRoomId={selectedRoom?.id ?? null}
+                activeDragId={activeDragId}
+                projectionPosition={projectionPosition}
+                projectionDeviceTypeId={getDraggedDeviceTypeId()}
+                onTransformChange={handleTransformChange}
+                onDeviceClick={handleDeviceClick}
+                onWireClick={handleWireClick}
+                onRoomClick={handleRoomClick}
+                connections={connections}
+                drawingWire={drawingWire}
+                onWireStart={handleWireStart}
+                onWireEnd={handleWireEnd}
+                dragDelta={dragDelta}
+                alignmentGuides={alignmentGuides}
+              />
+            </div>
+          ) : (
+            <PanelView projectName={currentProjectName} />
+          )}
         </div>
 
-        {/* Right Sidebar - Device Palette and Property Panel */}
-        <div className="w-64 flex flex-col bg-gradient-to-b from-slate-800 to-slate-900 border-l border-slate-700">
-          <div className="flex-1 overflow-hidden">
-            <DevicePalette />
+        {/* Right Sidebar - Device Palette and Property Panel (only show in floor plan view) */}
+        {activeView === 'floorplan' && (
+          <div className="w-64 flex flex-col bg-gradient-to-b from-slate-800 to-slate-900 border-l border-slate-700">
+            <div className="flex-1 overflow-hidden">
+              <DevicePalette />
+            </div>
+            <DevicePropertyPanel
+              selectedDevice={placedDevices.find(d => d.instanceId === selectedDeviceId) || null}
+              selectedWire={connections.find(c => c.id === selectedWireId) || null}
+              selectedRoom={selectedRoom}
+              floorPlanInfo={{
+                name: currentProjectName,
+                rooms: { offices: config.offices, meetingRooms: config.meetingRooms, toilets: config.toilets },
+                deviceCount: placedDevices.length,
+                wireCount: connections.length,
+              }}
+              onUpdateDevice={handleUpdateDevice}
+              onDeleteWire={(wireId) => {
+                setConnections(prev => prev.filter(c => c.id !== wireId));
+                setSelectedWireId(null);
+              }}
+              onDeleteDevice={(deviceId) => {
+                // Remove all connections to/from this device
+                setConnections(prev => prev.filter(c =>
+                  c.fromDeviceId !== deviceId && c.toDeviceId !== deviceId
+                ));
+                // Remove the device
+                setPlacedDevices(prev => prev.filter(d => d.instanceId !== deviceId));
+                setSelectedDeviceId(null);
+              }}
+            />
           </div>
-          <DevicePropertyPanel
-            selectedDevice={placedDevices.find(d => d.instanceId === selectedDeviceId) || null}
-            selectedWire={connections.find(c => c.id === selectedWireId) || null}
-            selectedRoom={selectedRoom}
-            floorPlanInfo={{
-              name: currentProjectName,
-              rooms: { offices: config.offices, meetingRooms: config.meetingRooms, toilets: config.toilets },
-              deviceCount: placedDevices.length,
-              wireCount: connections.length,
-            }}
-            onUpdateDevice={handleUpdateDevice}
-            onDeleteWire={(wireId) => {
-              setConnections(prev => prev.filter(c => c.id !== wireId));
-              setSelectedWireId(null);
-            }}
-            onDeleteDevice={(deviceId) => {
-              // Remove all connections to/from this device
-              setConnections(prev => prev.filter(c =>
-                c.fromDeviceId !== deviceId && c.toDeviceId !== deviceId
-              ));
-              // Remove the device
-              setPlacedDevices(prev => prev.filter(d => d.instanceId !== deviceId));
-              setSelectedDeviceId(null);
-            }}
-          />
-        </div>
+        )}
 
         {/* Config Modal */}
         <ConfigModal
