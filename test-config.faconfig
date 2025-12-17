@@ -1,0 +1,59 @@
+{
+  "version": "1.0",
+  "projectName": "Test Office Floor",
+  "createdAt": "2025-12-17T21:00:00Z",
+  
+  "devices": [
+    {
+      "address": "A.001.001",
+      "type": "detector",
+      "subType": "heat-multi",
+      "location": "Office 1",
+      "zone": "DZ-01",
+      "label": "Office 1 Detector"
+    },
+    {
+      "address": "A.001.002",
+      "type": "detector",
+      "subType": "heat-multi",
+      "location": "Office 2",
+      "zone": "DZ-01",
+      "label": "Office 2 Detector"
+    },
+    {
+      "address": "A.001.003",
+      "type": "mcp",
+      "location": "Public Area",
+      "zone": "DZ-01",
+      "label": "Main MCP"
+    },
+    {
+      "address": "A.001.004",
+      "type": "sounder",
+      "location": "Public Area",
+      "zone": "AZ-01",
+      "label": "Public Sounder"
+    }
+  ],
+  
+  "zones": {
+    "detection": [
+      { "id": "DZ-01", "name": "Ground Floor Detection" }
+    ],
+    "alarm": [
+      { "id": "AZ-01", "name": "Ground Floor Alarm" }
+    ]
+  },
+  
+  "causeEffect": [
+    {
+      "id": "rule-001",
+      "condition": {
+        "type": "OR",
+        "inputs": ["A.001.001", "A.001.002", "A.001.003"]
+      },
+      "outputs": ["A.001.004"],
+      "delay": 0
+    }
+  ]
+}

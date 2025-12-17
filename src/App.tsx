@@ -17,6 +17,8 @@ import { exportToExcel } from './utils/excelExport';
 import type { RoomConfig } from './utils/floorPlanGenerator';
 import type { PlacedDevice, ViewportTransform, Connection, DrawingWire, RoomInfo } from './types/devices';
 import type { ProjectListEntry } from './types/storage';
+import type { FAConfig } from './types/faconfig';
+import { parseFAConfig } from './utils/faconfigParser';
 
 // SVG Drag preview component - shows the device icon
 function DeviceDragPreview({ deviceTypeId }: { deviceTypeId: string | null }) {
@@ -136,6 +138,11 @@ function App() {
 
   // View state
   const [activeView, setActiveView] = useState<'floorplan' | 'panel'>('floorplan');
+
+  // Loaded config for panel simulation
+  const [loadedConfig, setLoadedConfig] = useState<FAConfig | null>(null);
+  const [configImportError, setConfigImportError] = useState<string | null>(null);
+  const configInputRef = useRef<HTMLInputElement>(null);
   const [projectList, setProjectList] = useState<ProjectListEntry[]>([]);
 
   // Compute if panel view should be enabled
@@ -324,6 +331,34 @@ function App() {
       console.error('Export failed:', error);
       setSaveNotification('Export failed!');
       setTimeout(() => setSaveNotification(null), 3000);
+    }
+  };
+
+  // Handle config file selection from sidebar
+  const handleConfigFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setConfigImportError(null);
+
+    try {
+      const text = await file.text();
+      const result = parseFAConfig(text);
+
+      if (result.success) {
+        setLoadedConfig(result.config);
+        setSaveNotification('Config loaded!');
+        setTimeout(() => setSaveNotification(null), 2000);
+      } else {
+        setConfigImportError(result.error);
+      }
+    } catch (e) {
+      setConfigImportError(e instanceof Error ? e.message : 'Failed to read file');
+    }
+
+    // Reset input so same file can be selected again
+    if (configInputRef.current) {
+      configInputRef.current.value = '';
     }
   };
 
@@ -716,6 +751,16 @@ function App() {
           currentProjectName={currentProjectName}
           onSelectProject={handleSelectProject}
           activeView={activeView}
+          onImportConfig={() => configInputRef.current?.click()}
+        />
+
+        {/* Hidden file input for config import */}
+        <input
+          ref={configInputRef}
+          type="file"
+          accept=".faconfig,.json"
+          onChange={handleConfigFileSelect}
+          className="hidden"
         />
 
         {/* Main Content */}
@@ -811,6 +856,8 @@ function App() {
               projectName={currentProjectName}
               placedDevices={placedDevices}
               connections={connections}
+              loadedConfig={loadedConfig}
+              importError={configImportError}
             />
           )}
         </div>
