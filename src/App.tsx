@@ -11,6 +11,7 @@ import { useCoordinates } from './hooks/useCoordinates';
 import { generateInstanceId, generateSerialNumber, getDeviceType } from './types/devices';
 import DevicePropertyPanel from './components/DevicePropertyPanel';
 import { saveProject, loadProject, deleteProject, getProjectList, generateProjectId, getMostRecentProject } from './utils/storage';
+import { exportToExcel } from './utils/excelExport';
 import type { RoomConfig } from './utils/floorPlanGenerator';
 import type { PlacedDevice, ViewportTransform, Connection, DrawingWire } from './types/devices';
 import type { ProjectListEntry } from './types/storage';
@@ -245,6 +246,19 @@ function App() {
     setCurrentProjectName('Generated Plan');
     setSaveNotification('Project deleted');
     setTimeout(() => setSaveNotification(null), 2000);
+  };
+
+  // Handle export to Excel
+  const handleExport = () => {
+    try {
+      exportToExcel(currentProjectName, svgContent);
+      setSaveNotification('Exported to Excel!');
+      setTimeout(() => setSaveNotification(null), 2000);
+    } catch (error) {
+      console.error('Export failed:', error);
+      setSaveNotification('Export failed!');
+      setTimeout(() => setSaveNotification(null), 3000);
+    }
   };
 
   // Handle selecting a project from the sidebar
@@ -618,6 +632,7 @@ function App() {
         <Sidebar
           onGenerate={handleGenerate}
           onOpenConfig={() => setIsConfigOpen(true)}
+          onExport={handleExport}
           projectList={projectList}
           currentProjectId={currentProjectId}
           currentProjectName={currentProjectName}

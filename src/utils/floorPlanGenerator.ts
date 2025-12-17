@@ -16,7 +16,8 @@ interface Room {
     y: number;
     width: number;
     height: number;
-    label: string;
+    label: string; // The visual label (e.g. "Meeting Room")
+    uniqueLabel: string; // The unique ID for export (e.g. "Meeting Room 1")
     doorPosition?: { x: number; y: number; direction: 'top' | 'bottom' | 'left' | 'right' };
 }
 
@@ -194,7 +195,8 @@ function renderRoom(room: Room): string {
           fill="${color}" stroke="#333" stroke-width="2"/>
     <text x="${x + width / 2}" y="${y + height / 2}" 
           text-anchor="middle" dominant-baseline="middle"
-          font-size="${fontSize}" font-weight="500" fill="#333">
+          font-size="${fontSize}" font-weight="500" fill="#333"
+          data-unique-label="${room.uniqueLabel}">
       ${label}
     </text>
   `;
@@ -264,6 +266,22 @@ export function generateFloorPlan(config: RoomConfig): string {
         topSizes[topSizes.length - 1].size += usableWidth - topUsed;
     }
 
+    // Track counts for each room type to generate unique labels
+    const typeCounts: Record<string, number> = {};
+    const getUniqueLabel = (type: RoomType): string => {
+        typeCounts[type] = (typeCounts[type] || 0) + 1;
+        // Office uses "Office N", others use "Type N"
+        if (type === 'office') return `Office ${typeCounts[type]}`;
+        return `${ROOM_LABELS[type]} ${typeCounts[type]}`;
+    };
+
+    // Helper to get visual label without numbers (except for Offices, if desired, but user asked to hide numbers)
+    // User request: "they should only display meeting room, office" (even for offices)
+    const getVisualLabel = (type: RoomType): string => {
+        // Just return the generic label for all types as requested
+        return ROOM_LABELS[type];
+    };
+
     for (const { type, size } of topSizes) {
         const room: Room = {
             id: `room-${roomCounter++}`,
@@ -272,7 +290,8 @@ export function generateFloorPlan(config: RoomConfig): string {
             y: topRowY,
             width: size,
             height: rowHeight,
-            label: type === 'office' ? `Office ${roomCounter - 1}` : ROOM_LABELS[type],
+            label: getVisualLabel(type),
+            uniqueLabel: getUniqueLabel(type),
         };
         room.doorPosition = calculateDoorPosition(room, corridorY, rowHeight, corridorX, corridorWidth) || undefined;
         rooms.push(room);
@@ -292,6 +311,7 @@ export function generateFloorPlan(config: RoomConfig): string {
         width: entranceWidth,
         height: rowHeight,
         label: 'Main Entrance',
+        uniqueLabel: 'Main Entrance',
     };
     // No door - entrance is open to public area
     rooms.push(entrance);
@@ -319,7 +339,8 @@ export function generateFloorPlan(config: RoomConfig): string {
             y: bottomRowY,
             width: size,
             height: rowHeight,
-            label: type === 'office' ? `Office ${roomCounter - 1}` : ROOM_LABELS[type],
+            label: getVisualLabel(type),
+            uniqueLabel: getUniqueLabel(type),
         };
         room.doorPosition = calculateDoorPosition(room, corridorY, rowHeight, corridorX, corridorWidth) || undefined;
         rooms.push(room);
@@ -349,7 +370,8 @@ export function generateFloorPlan(config: RoomConfig): string {
             y: bottomRowY,
             width: size,
             height: rowHeight,
-            label: type === 'office' ? `Office ${roomCounter - 1}` : ROOM_LABELS[type],
+            label: getVisualLabel(type),
+            uniqueLabel: getUniqueLabel(type),
         };
         room.doorPosition = calculateDoorPosition(room, corridorY, rowHeight, corridorX, corridorWidth) || undefined;
         rooms.push(room);
