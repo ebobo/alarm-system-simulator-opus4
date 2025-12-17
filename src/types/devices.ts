@@ -73,6 +73,19 @@ export interface DrawingWire {
     endY: number;                // Plan Y coordinate
 }
 
+/**
+ * Room information for selection and property display
+ */
+export interface RoomInfo {
+    id: string;
+    type: string;                // Room type (office, meeting, toilet, etc.)
+    uniqueLabel: string;         // Unique label like "Office 1", "Meeting Room 2"
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
 // Terminal positions for AutroGuard base:
 // 4 terminals at top, bottom, left, right
 const AUTROGUARD_TERMINALS: TerminalDefinition[] = [

@@ -57,6 +57,20 @@ const MAX_ROOM_SIZE = 200; // Prevent huge rooms
 const DOOR_WIDTH = 40;
 const DOOR_ARC_RADIUS = 35;
 
+// Floor plan dimensions in SVG units
+const CANVAS_WIDTH = 900;
+const CANVAS_HEIGHT = 700;
+
+// Real-world dimensions in meters (building size)
+// The building represents approximately 30m x 21m
+const BUILDING_WIDTH_METERS = 30;
+const BUILDING_HEIGHT_METERS = 21;
+
+// Export scale factor: SVG units to meters
+// Canvas is 900x700, with 40px margin on each side, so usable area is 820x620
+// Usable area represents 30m x 21m building
+export const PIXELS_PER_METER = (CANVAS_WIDTH - 80) / BUILDING_WIDTH_METERS; // ~27.33 px/m
+
 function shuffleArray<T>(array: T[]): T[] {
     const shuffled = [...array];
     for (let i = shuffled.length - 1; i > 0; i--) {
@@ -192,11 +206,16 @@ function renderRoom(room: Room): string {
 
     return `
     <rect x="${x}" y="${y}" width="${width}" height="${height}" 
-          fill="${color}" stroke="#333" stroke-width="2"/>
+          fill="${color}" stroke="#333" stroke-width="2"
+          data-room-id="${room.id}" data-room-type="${type}" 
+          data-room-label="${room.uniqueLabel}"
+          data-room-x="${x}" data-room-y="${y}"
+          data-room-width="${width}" data-room-height="${height}"
+          style="cursor: pointer;"/>
     <text x="${x + width / 2}" y="${y + height / 2}" 
           text-anchor="middle" dominant-baseline="middle"
           font-size="${fontSize}" font-weight="500" fill="#333"
-          data-unique-label="${room.uniqueLabel}">
+          data-unique-label="${room.uniqueLabel}" style="pointer-events: none;">
       ${label}
     </text>
   `;
@@ -400,10 +419,15 @@ export function generateFloorPlan(config: RoomConfig): string {
 
     <!-- Public Corridor (full width) -->
     <rect x="${corridorX}" y="${corridorY}" width="${corridorWidth}" height="${rowHeight}" 
-          fill="${ROOM_COLORS.public}" stroke="#333" stroke-width="2"/>
+          fill="${ROOM_COLORS.public}" stroke="#333" stroke-width="2"
+          data-room-id="corridor" data-room-type="public" 
+          data-room-label="Public Area"
+          data-room-x="${corridorX}" data-room-y="${corridorY}"
+          data-room-width="${corridorWidth}" data-room-height="${rowHeight}"
+          style="cursor: pointer;"/>
     <text x="${corridorX + corridorWidth / 2}" y="${corridorY + rowHeight / 2}" 
           text-anchor="middle" dominant-baseline="middle"
-          font-size="11" font-weight="500" fill="#333">
+          font-size="11" font-weight="500" fill="#333" style="pointer-events: none;">
       Public Area
     </text>
 

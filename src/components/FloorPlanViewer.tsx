@@ -1,8 +1,8 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
 import { TransformWrapper, TransformComponent, useControls } from 'react-zoom-pan-pinch';
 import type { ReactZoomPanPinchRef } from 'react-zoom-pan-pinch';
 import { useDroppable } from '@dnd-kit/core';
-import type { PlacedDevice, ViewportTransform, Connection, DrawingWire } from '../types/devices';
+import type { PlacedDevice, ViewportTransform, Connection, DrawingWire, RoomInfo } from '../types/devices';
 import DeviceOverlay from './DeviceOverlay';
 
 interface FloorPlanViewerProps {
@@ -10,12 +10,14 @@ interface FloorPlanViewerProps {
     placedDevices: PlacedDevice[];
     selectedDeviceId?: string | null;
     selectedWireId?: string | null;
+    selectedRoomId?: string | null;
     activeDragId?: string | null;
     projectionPosition?: { x: number; y: number } | null;
     projectionDeviceTypeId?: string | null;
     onTransformChange?: (transform: ViewportTransform) => void;
     onDeviceClick?: (instanceId: string) => void;
     onWireClick?: (wireId: string) => void;
+    onRoomClick?: (roomInfo: RoomInfo) => void;
     connections: Connection[];
     drawingWire: DrawingWire | null;
     onWireStart: (deviceId: string, terminalId: string, e: React.PointerEvent) => void;
@@ -67,12 +69,14 @@ export default function FloorPlanViewer({
     placedDevices,
     selectedDeviceId,
     selectedWireId,
+    selectedRoomId,
     activeDragId,
     projectionPosition,
     projectionDeviceTypeId,
     onTransformChange,
     onDeviceClick,
     onWireClick,
+    onRoomClick,
     connections,
     drawingWire,
     onWireStart,
@@ -81,6 +85,7 @@ export default function FloorPlanViewer({
     alignmentGuides,
 }: FloorPlanViewerProps) {
     const transformRef = useRef<ReactZoomPanPinchRef>(null);
+    const svgContainerRef = useRef<HTMLDivElement>(null);
 
     // Local state for viewport transform (for device positioning)
     const [localTransform, setLocalTransform] = useState<ViewportTransform>({
@@ -94,6 +99,34 @@ export default function FloorPlanViewer({
         id: 'floor-plan-drop-zone',
     });
 
+    // Apply visual highlight to selected room label
+    useEffect(() => {
+        if (!svgContainerRef.current) return;
+
+        // Reset all room labels to default color
+        const allLabels = svgContainerRef.current.querySelectorAll('[data-unique-label]');
+        allLabels.forEach((el) => {
+            (el as SVGTextElement).style.fill = '#333';
+            (el as SVGTextElement).style.fontWeight = '500';
+        });
+
+        // Highlight selected room label in blue
+        if (selectedRoomId) {
+            // Find the room rect to get its unique label
+            const roomRect = svgContainerRef.current.querySelector(`[data-room-id="${selectedRoomId}"]`);
+            if (roomRect) {
+                const roomLabel = roomRect.getAttribute('data-room-label');
+                if (roomLabel) {
+                    const labelEl = svgContainerRef.current.querySelector(`[data-unique-label="${roomLabel}"]`);
+                    if (labelEl) {
+                        (labelEl as SVGTextElement).style.fill = '#2563EB';
+                        (labelEl as SVGTextElement).style.fontWeight = '700';
+                    }
+                }
+            }
+        }
+    }, [selectedRoomId, svgContent]);
+
     // Handle transform changes from zoom/pan
     const handleTransformChange = useCallback((ref: ReactZoomPanPinchRef) => {
         const transform = {
@@ -104,6 +137,27 @@ export default function FloorPlanViewer({
         setLocalTransform(transform);
         onTransformChange?.(transform);
     }, [onTransformChange]);
+
+    // Handle SVG click to detect room clicks
+    const handleSvgClick = useCallback((e: React.MouseEvent) => {
+        const target = e.target as HTMLElement;
+
+        // Check if clicking on a room rect element
+        const roomId = target.getAttribute('data-room-id');
+        if (roomId) {
+            e.stopPropagation();
+            const roomInfo: RoomInfo = {
+                id: roomId,
+                type: target.getAttribute('data-room-type') || 'unknown',
+                uniqueLabel: target.getAttribute('data-room-label') || roomId,
+                x: parseFloat(target.getAttribute('data-room-x') || '0'),
+                y: parseFloat(target.getAttribute('data-room-y') || '0'),
+                width: parseFloat(target.getAttribute('data-room-width') || '0'),
+                height: parseFloat(target.getAttribute('data-room-height') || '0'),
+            };
+            onRoomClick?.(roomInfo);
+        }
+    }, [onRoomClick]);
 
     // Determine if we should show the drop indicator
     const showDropIndicator = isOver && activeDragId?.startsWith('palette-');
@@ -145,8 +199,10 @@ export default function FloorPlanViewer({
                 >
                     {/* Floor plan SVG */}
                     <div
+                        ref={svgContainerRef}
                         className="bg-white rounded-lg shadow-2xl relative"
                         dangerouslySetInnerHTML={{ __html: svgContent }}
+                        onClick={handleSvgClick}
                     />
                 </TransformComponent>
             </TransformWrapper>

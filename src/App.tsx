@@ -13,7 +13,7 @@ import DevicePropertyPanel from './components/DevicePropertyPanel';
 import { saveProject, loadProject, deleteProject, getProjectList, generateProjectId, getMostRecentProject } from './utils/storage';
 import { exportToExcel } from './utils/excelExport';
 import type { RoomConfig } from './utils/floorPlanGenerator';
-import type { PlacedDevice, ViewportTransform, Connection, DrawingWire } from './types/devices';
+import type { PlacedDevice, ViewportTransform, Connection, DrawingWire, RoomInfo } from './types/devices';
 import type { ProjectListEntry } from './types/storage';
 
 // SVG Drag preview component - shows the device icon
@@ -67,6 +67,9 @@ function App() {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [drawingWire, setDrawingWire] = useState<DrawingWire | null>(null);
   const [selectedWireId, setSelectedWireId] = useState<string | null>(null);
+
+  // Room selection state
+  const [selectedRoom, setSelectedRoom] = useState<RoomInfo | null>(null);
 
   // Save/Load state
   const [saveNotification, setSaveNotification] = useState<string | null>(null);
@@ -456,6 +459,8 @@ function App() {
 
       setPlacedDevices(prev => [...prev, newDevice]);
       setSelectedDeviceId(newDevice.instanceId);
+      setSelectedWireId(null);   // Deselect wire when placing device
+      setSelectedRoom(null);     // Deselect room when placing device
     } else if (id.startsWith('placed-')) {
       // Moving existing device
       const instanceId = id.replace('placed-', '');
@@ -473,18 +478,28 @@ function App() {
   const handleDeviceClick = (instanceId: string) => {
     setSelectedDeviceId(prev => (prev === instanceId ? null : instanceId));
     setSelectedWireId(null); // Deselect wire when selecting device
+    setSelectedRoom(null);   // Deselect room when selecting device
   };
 
   // Handle wire click for selection
   const handleWireClick = (wireId: string) => {
     setSelectedWireId(prev => (prev === wireId ? null : wireId));
     setSelectedDeviceId(null); // Deselect device when selecting wire
+    setSelectedRoom(null);     // Deselect room when selecting wire
+  };
+
+  // Handle room click for selection
+  const handleRoomClick = (roomInfo: RoomInfo) => {
+    setSelectedRoom(prev => (prev?.id === roomInfo.id ? null : roomInfo));
+    setSelectedDeviceId(null); // Deselect device when selecting room
+    setSelectedWireId(null);   // Deselect wire when selecting room
   };
 
   // Handle floor plan empty area click - deselect all
   const handleFloorPlanClick = () => {
     setSelectedDeviceId(null);
     setSelectedWireId(null);
+    setSelectedRoom(null);
   };
 
   // Handle Delete key to remove selected wire or device
@@ -689,12 +704,14 @@ function App() {
               placedDevices={placedDevices}
               selectedDeviceId={selectedDeviceId}
               selectedWireId={selectedWireId}
+              selectedRoomId={selectedRoom?.id ?? null}
               activeDragId={activeDragId}
               projectionPosition={projectionPosition}
               projectionDeviceTypeId={getDraggedDeviceTypeId()}
               onTransformChange={handleTransformChange}
               onDeviceClick={handleDeviceClick}
               onWireClick={handleWireClick}
+              onRoomClick={handleRoomClick}
               connections={connections}
               drawingWire={drawingWire}
               onWireStart={handleWireStart}
@@ -713,6 +730,7 @@ function App() {
           <DevicePropertyPanel
             selectedDevice={placedDevices.find(d => d.instanceId === selectedDeviceId) || null}
             selectedWire={connections.find(c => c.id === selectedWireId) || null}
+            selectedRoom={selectedRoom}
             floorPlanInfo={{
               name: currentProjectName,
               rooms: { offices: config.offices, meetingRooms: config.meetingRooms, toilets: config.toilets },

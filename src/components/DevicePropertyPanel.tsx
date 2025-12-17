@@ -1,4 +1,5 @@
-import type { PlacedDevice, Connection } from '../types/devices';
+import type { PlacedDevice, Connection, RoomInfo } from '../types/devices';
+import { PIXELS_PER_METER } from '../utils/floorPlanGenerator';
 
 interface FloorPlanInfo {
     name: string;
@@ -10,6 +11,7 @@ interface FloorPlanInfo {
 interface DevicePropertyPanelProps {
     selectedDevice: PlacedDevice | null;
     selectedWire: Connection | null;
+    selectedRoom: RoomInfo | null;
     floorPlanInfo: FloorPlanInfo;
     onUpdateDevice: (device: PlacedDevice) => void;
     onPowerOn?: (device: PlacedDevice) => void;
@@ -17,19 +19,77 @@ interface DevicePropertyPanelProps {
     onDeleteDevice?: (deviceId: string) => void;
 }
 
+// Format room type for display
+const formatRoomType = (type: string): string => {
+    const typeMap: Record<string, string> = {
+        office: 'Office',
+        meeting: 'Meeting Room',
+        toilet: 'Toilet',
+        entrance: 'Entrance',
+        public: 'Public Area',
+        server: 'Server Room',
+        storage: 'Storage',
+    };
+    return typeMap[type] || type.charAt(0).toUpperCase() + type.slice(1);
+};
+
 /**
  * Property panel component for displaying and editing device properties
- * Shows floor plan info when nothing selected, wire info when wire selected, device info otherwise
+ * Shows floor plan info when nothing selected, room info when room selected,
+ * wire info when wire selected, device info when device selected
  */
 export default function DevicePropertyPanel({
     selectedDevice,
     selectedWire,
+    selectedRoom,
     floorPlanInfo,
     onUpdateDevice,
     onPowerOn,
     onDeleteWire,
     onDeleteDevice
 }: DevicePropertyPanelProps) {
+    // Show room info when room is selected
+    if (selectedRoom) {
+        // Convert pixels to meters (approx 27.33 px/m based on 30m building width)
+        const widthMeters = (selectedRoom.width / PIXELS_PER_METER).toFixed(1);
+        const heightMeters = (selectedRoom.height / PIXELS_PER_METER).toFixed(1);
+        const areaMeters = ((selectedRoom.width / PIXELS_PER_METER) * (selectedRoom.height / PIXELS_PER_METER)).toFixed(1);
+
+        return (
+            <div className="border-t border-slate-700 bg-slate-800/50">
+                <div className="px-4 py-2 border-b border-slate-700/50 bg-slate-700/30">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                        Room Properties
+                    </h3>
+                </div>
+                <div className="p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-400">Name</span>
+                        <span className="text-xs text-slate-200 font-medium">{selectedRoom.uniqueLabel}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-400">Type</span>
+                        <span className="text-xs text-slate-200">{formatRoomType(selectedRoom.type)}</span>
+                    </div>
+                    <div className="border-t border-slate-700 pt-2 mt-2">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs text-slate-400">Width</span>
+                            <span className="text-xs text-slate-200 font-mono">{widthMeters} m</span>
+                        </div>
+                        <div className="flex items-center justify-between mt-1">
+                            <span className="text-xs text-slate-400">Height</span>
+                            <span className="text-xs text-slate-200 font-mono">{heightMeters} m</span>
+                        </div>
+                        <div className="flex items-center justify-between mt-1">
+                            <span className="text-xs text-slate-400">Area</span>
+                            <span className="text-xs text-slate-200 font-mono">{areaMeters} m²</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     // Show floor plan info when nothing is selected
     if (!selectedDevice && !selectedWire) {
         return (
