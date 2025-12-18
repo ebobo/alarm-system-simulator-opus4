@@ -1,0 +1,363 @@
+{
+  "version": "1.0",
+  "projectName": "Ellen office",
+  "createdAt": "2025-12-18T18:18:35.330Z",
+  "devices": [
+    {
+      "address": "A.001.001",
+      "uuid": "019b32af-1471-7d8d-a189-8b90e91411fc",
+      "type": "detector",
+      "location": "Public Area",
+      "label": "A.001.001 Public Area"
+    },
+    {
+      "address": "A.001.002",
+      "uuid": "019b32af-1471-744a-99f8-276256834189",
+      "type": "detector",
+      "location": "Toilet 1",
+      "label": "A.001.002 Toilet 1"
+    },
+    {
+      "address": "A.001.003",
+      "uuid": "019b32af-1471-7b8f-8932-60597161c439",
+      "type": "detector",
+      "location": "Office 1",
+      "label": "A.001.003 Office 1"
+    },
+    {
+      "address": "A.001.004",
+      "uuid": "019b32af-1471-741b-a207-e89d0624f6e1",
+      "type": "detector",
+      "location": "Office 2",
+      "label": "A.001.004 Office 2"
+    },
+    {
+      "address": "A.001.005",
+      "uuid": "019b32af-1471-72f4-84e3-b6a268819086",
+      "type": "detector",
+      "location": "Meeting Room 1",
+      "label": "A.001.005 Meeting Room 1"
+    },
+    {
+      "address": "A.001.006",
+      "uuid": "019b32af-1471-7e20-9cc4-c304afc09d9d",
+      "type": "detector",
+      "location": "Toilet 2",
+      "label": "A.001.006 Toilet 2"
+    },
+    {
+      "address": "A.001.007",
+      "uuid": "019b32af-1471-7fb2-9641-fde86b5ba7d6",
+      "type": "detector",
+      "location": "Office 3",
+      "label": "A.001.007 Office 3"
+    },
+    {
+      "address": "A.001.008",
+      "uuid": "019b32af-1471-75e0-8f24-387afb8a4e55",
+      "type": "detector",
+      "location": "Main Entrance",
+      "label": "A.001.008 Main Entrance"
+    },
+    {
+      "address": "A.001.009",
+      "uuid": "019b32af-1471-74f9-b399-09404dbb4fba",
+      "type": "detector",
+      "location": "Toilet 3",
+      "label": "A.001.009 Toilet 3"
+    },
+    {
+      "address": "A.001.010",
+      "uuid": "019b32af-1471-7952-9bce-d199baf92b5e",
+      "type": "detector",
+      "location": "Office 4",
+      "label": "A.001.010 Office 4"
+    },
+    {
+      "address": "A.001.011",
+      "uuid": "019b32af-1471-732b-bd6b-a939db092a46",
+      "type": "detector",
+      "location": "Office 5",
+      "label": "A.001.011 Office 5"
+    },
+    {
+      "address": "A.001.012",
+      "uuid": "019b32af-1471-78b4-83e6-a89ea513af63",
+      "type": "detector",
+      "location": "Office 6",
+      "label": "A.001.012 Office 6"
+    },
+    {
+      "address": "A.001.013",
+      "uuid": "019b32af-1471-7eec-aaf9-1fb2419a6e85",
+      "type": "detector",
+      "location": "Meeting Room 2",
+      "label": "A.001.013 Meeting Room 2"
+    },
+    {
+      "address": "A.001.014",
+      "uuid": "019b32af-1471-7a05-8efe-b0fbb2b1d0a9",
+      "type": "mcp",
+      "location": "Public Area",
+      "label": "A.001.014 Public Area"
+    },
+    {
+      "address": "A.001.015",
+      "uuid": "019b32af-1471-7891-8d42-9b07c512f56e",
+      "type": "sounder",
+      "location": "Public Area",
+      "label": "A.001.015 Public Area"
+    }
+  ],
+  "zones": {
+    "detection": [
+      {
+        "id": "DZ-01",
+        "uuid": "019b32af-36d3-721f-9ab2-b11f68078c5c",
+        "name": "Public Area",
+        "devices": [
+          "A.001.001",
+          "A.001.014"
+        ],
+        "linkedAlarmZones": [
+          "019b32af-36d4-7bc6-af9e-631c1d6141cc"
+        ]
+      },
+      {
+        "id": "DZ-02",
+        "uuid": "019b32af-36d4-7e66-b08a-a9a24393189d",
+        "name": "Toilet 1",
+        "devices": [
+          "A.001.002"
+        ],
+        "linkedAlarmZones": [
+          "019b32af-36d4-7bc6-af9e-631c1d6141cc"
+        ]
+      },
+      {
+        "id": "DZ-03",
+        "uuid": "019b32af-36d4-76de-b88a-e1531e69501f",
+        "name": "Office 1",
+        "devices": [
+          "A.001.003"
+        ],
+        "linkedAlarmZones": [
+          "019b32af-36d4-7bc6-af9e-631c1d6141cc"
+        ]
+      },
+      {
+        "id": "DZ-04",
+        "uuid": "019b32af-36d4-77f2-8310-1de001f050e0",
+        "name": "Office 2",
+        "devices": [
+          "A.001.004"
+        ],
+        "linkedAlarmZones": [
+          "019b32af-36d4-7bc6-af9e-631c1d6141cc"
+        ]
+      },
+      {
+        "id": "DZ-05",
+        "uuid": "019b32af-36d4-7632-a0f7-8a14f4e989b8",
+        "name": "Meeting Room 1",
+        "devices": [
+          "A.001.005"
+        ],
+        "linkedAlarmZones": [
+          "019b32af-36d4-7bc6-af9e-631c1d6141cc"
+        ]
+      },
+      {
+        "id": "DZ-06",
+        "uuid": "019b32af-36d4-73fa-ab34-2e632ae56072",
+        "name": "Toilet 2",
+        "devices": [
+          "A.001.006"
+        ],
+        "linkedAlarmZones": [
+          "019b32af-36d4-7bc6-af9e-631c1d6141cc"
+        ]
+      },
+      {
+        "id": "DZ-07",
+        "uuid": "019b32af-36d4-70ed-8995-7b34de809fef",
+        "name": "Office 3",
+        "devices": [
+          "A.001.007"
+        ],
+        "linkedAlarmZones": [
+          "019b32af-36d4-7bc6-af9e-631c1d6141cc"
+        ]
+      },
+      {
+        "id": "DZ-08",
+        "uuid": "019b32af-36d4-7870-8212-e41e48eb79cb",
+        "name": "Main Entrance",
+        "devices": [
+          "A.001.008"
+        ],
+        "linkedAlarmZones": [
+          "019b32af-36d4-7bc6-af9e-631c1d6141cc"
+        ]
+      },
+      {
+        "id": "DZ-09",
+        "uuid": "019b32af-36d4-7893-8f32-34a01f9a37fb",
+        "name": "Toilet 3",
+        "devices": [
+          "A.001.009"
+        ],
+        "linkedAlarmZones": [
+          "019b32af-36d4-7bc6-af9e-631c1d6141cc"
+        ]
+      },
+      {
+        "id": "DZ-10",
+        "uuid": "019b32af-36d4-713a-a858-6c3f66f92bc4",
+        "name": "Office 4",
+        "devices": [
+          "A.001.010"
+        ],
+        "linkedAlarmZones": [
+          "019b32af-36d4-7bc6-af9e-631c1d6141cc"
+        ]
+      },
+      {
+        "id": "DZ-11",
+        "uuid": "019b32af-36d4-7848-90b3-f3af666f6b46",
+        "name": "Office 5",
+        "devices": [
+          "A.001.011"
+        ],
+        "linkedAlarmZones": [
+          "019b32af-36d4-7bc6-af9e-631c1d6141cc"
+        ]
+      },
+      {
+        "id": "DZ-12",
+        "uuid": "019b32af-36d4-7c4a-96b4-b241ee64d679",
+        "name": "Office 6",
+        "devices": [
+          "A.001.012"
+        ],
+        "linkedAlarmZones": [
+          "019b32af-36d4-7bc6-af9e-631c1d6141cc"
+        ]
+      },
+      {
+        "id": "DZ-13",
+        "uuid": "019b32af-36d4-7a83-8d3c-7681e180fac1",
+        "name": "Meeting Room 2",
+        "devices": [
+          "A.001.013"
+        ],
+        "linkedAlarmZones": [
+          "019b32af-36d4-7bc6-af9e-631c1d6141cc"
+        ]
+      }
+    ],
+    "alarm": [
+      {
+        "id": "AZ-01",
+        "uuid": "019b32af-36d4-7bc6-af9e-631c1d6141cc",
+        "name": "All Outputs",
+        "devices": [
+          "A.001.015"
+        ]
+      }
+    ]
+  },
+  "causeEffect": [
+    {
+      "id": "019b32af-69c2-7135-8455-b9924bbc068d",
+      "inputZone": "019b32af-36d3-721f-9ab2-b11f68078c5c",
+      "outputZone": "019b32af-36d4-7bc6-af9e-631c1d6141cc",
+      "logic": "OR",
+      "delay": 0
+    },
+    {
+      "id": "019b32af-69c2-7682-ac99-7ae38a8caadb",
+      "inputZone": "019b32af-36d4-7e66-b08a-a9a24393189d",
+      "outputZone": "019b32af-36d4-7bc6-af9e-631c1d6141cc",
+      "logic": "OR",
+      "delay": 0
+    },
+    {
+      "id": "019b32af-69c2-7036-aa9f-ebf0f18b8928",
+      "inputZone": "019b32af-36d4-76de-b88a-e1531e69501f",
+      "outputZone": "019b32af-36d4-7bc6-af9e-631c1d6141cc",
+      "logic": "OR",
+      "delay": 0
+    },
+    {
+      "id": "019b32af-69c2-76e8-87eb-4b491fd95317",
+      "inputZone": "019b32af-36d4-77f2-8310-1de001f050e0",
+      "outputZone": "019b32af-36d4-7bc6-af9e-631c1d6141cc",
+      "logic": "OR",
+      "delay": 0
+    },
+    {
+      "id": "019b32af-69c2-77da-b769-c957330a094a",
+      "inputZone": "019b32af-36d4-7632-a0f7-8a14f4e989b8",
+      "outputZone": "019b32af-36d4-7bc6-af9e-631c1d6141cc",
+      "logic": "OR",
+      "delay": 0
+    },
+    {
+      "id": "019b32af-69c2-7cac-b8cc-8218c40f1df3",
+      "inputZone": "019b32af-36d4-73fa-ab34-2e632ae56072",
+      "outputZone": "019b32af-36d4-7bc6-af9e-631c1d6141cc",
+      "logic": "OR",
+      "delay": 0
+    },
+    {
+      "id": "019b32af-69c2-7b27-8c53-9269faf6539c",
+      "inputZone": "019b32af-36d4-70ed-8995-7b34de809fef",
+      "outputZone": "019b32af-36d4-7bc6-af9e-631c1d6141cc",
+      "logic": "OR",
+      "delay": 0
+    },
+    {
+      "id": "019b32af-69c2-70cd-94cd-1f1171b0cd8a",
+      "inputZone": "019b32af-36d4-7870-8212-e41e48eb79cb",
+      "outputZone": "019b32af-36d4-7bc6-af9e-631c1d6141cc",
+      "logic": "OR",
+      "delay": 0
+    },
+    {
+      "id": "019b32af-69c2-7165-a2f7-5759b19cda74",
+      "inputZone": "019b32af-36d4-7893-8f32-34a01f9a37fb",
+      "outputZone": "019b32af-36d4-7bc6-af9e-631c1d6141cc",
+      "logic": "OR",
+      "delay": 0
+    },
+    {
+      "id": "019b32af-69c2-7d27-acad-ee22694c849d",
+      "inputZone": "019b32af-36d4-713a-a858-6c3f66f92bc4",
+      "outputZone": "019b32af-36d4-7bc6-af9e-631c1d6141cc",
+      "logic": "OR",
+      "delay": 0
+    },
+    {
+      "id": "019b32af-69c2-71d5-9459-c5f600661ef0",
+      "inputZone": "019b32af-36d4-7848-90b3-f3af666f6b46",
+      "outputZone": "019b32af-36d4-7bc6-af9e-631c1d6141cc",
+      "logic": "OR",
+      "delay": 0
+    },
+    {
+      "id": "019b32af-69c2-7da0-b456-86af63e1a859",
+      "inputZone": "019b32af-36d4-7c4a-96b4-b241ee64d679",
+      "outputZone": "019b32af-36d4-7bc6-af9e-631c1d6141cc",
+      "logic": "OR",
+      "delay": 0
+    },
+    {
+      "id": "019b32af-69c2-7df9-8c2b-a01f8fa1ea3b",
+      "inputZone": "019b32af-36d4-7a83-8d3c-7681e180fac1",
+      "outputZone": "019b32af-36d4-7bc6-af9e-631c1d6141cc",
+      "logic": "OR",
+      "delay": 0
+    }
+  ]
+}
