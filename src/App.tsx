@@ -13,7 +13,7 @@ import { useCoordinates } from './hooks/useCoordinates';
 import { generateInstanceId, generateSerialNumber, getDeviceType } from './types/devices';
 import DevicePropertyPanel from './components/DevicePropertyPanel';
 import { saveProject, loadProject, deleteProject, getProjectList, generateProjectId, getMostRecentProject } from './utils/storage';
-import { exportToExcel } from './utils/excelExport';
+import { exportToExcel, exportSVG } from './utils/excelExport';
 import type { RoomConfig } from './utils/floorPlanGenerator';
 import type { PlacedDevice, ViewportTransform, Connection, DrawingWire, RoomInfo } from './types/devices';
 import type { ProjectListEntry } from './types/storage';
@@ -321,11 +321,15 @@ function App() {
     setTimeout(() => setSaveNotification(null), 2000);
   };
 
-  // Handle export to Excel
+  // Handle export to Excel and SVG
   const handleExport = () => {
     try {
       exportToExcel(currentProjectName, svgContent);
-      setSaveNotification('Exported to Excel!');
+      // Small delay to prevent browser blocking second download
+      setTimeout(() => {
+        exportSVG(svgContent, currentProjectName);
+      }, 100);
+      setSaveNotification('Exported Excel + SVG!');
       setTimeout(() => setSaveNotification(null), 2000);
     } catch (error) {
       console.error('Export failed:', error);

@@ -240,3 +240,27 @@ export function exportToExcel(
     // Download the file
     XLSX.writeFile(workbook, filename);
 }
+
+/**
+ * Export SVG floor plan as a downloadable file
+ */
+export function exportSVG(svgContent: string, projectName: string): void {
+    // Generate filename with timestamp
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `${projectName.replace(/[^a-zA-Z0-9]/g, '_')}_${timestamp}.svg`;
+
+    // Create blob from SVG content
+    const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+
+    // Create download link and trigger download
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    // Clean up object URL
+    URL.revokeObjectURL(url);
+}
