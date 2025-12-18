@@ -10,7 +10,7 @@ interface FloorPlanViewerProps {
     placedDevices: PlacedDevice[];
     selectedDeviceId?: string | null;
     selectedWireId?: string | null;
-    selectedRoomId?: string | null;
+    selectedRoomId?: string | null;  // Reserved for future use
     activeDragId?: string | null;
     projectionPosition?: { x: number; y: number } | null;
     projectionDeviceTypeId?: string | null;
@@ -69,7 +69,7 @@ export default function FloorPlanViewer({
     placedDevices,
     selectedDeviceId,
     selectedWireId,
-    selectedRoomId,
+    selectedRoomId: _,  // Reserved for future use
     activeDragId,
     projectionPosition,
     projectionDeviceTypeId,

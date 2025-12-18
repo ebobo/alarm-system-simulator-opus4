@@ -56,15 +56,15 @@ const MIN_ROOM_SIZE = 100;
 const MAX_ROOM_SIZE = 200; // Prevent huge rooms
 const DOOR_WIDTH = 40;
 const DOOR_ARC_RADIUS = 35;
+const OUTER_WALL_THICKNESS = 8; // Building perimeter walls
+const INNER_WALL_THICKNESS = 4; // Interior room dividers
+const WINDOW_WIDTH = 40; // Window opening width
 
 // Floor plan dimensions in SVG units
 const CANVAS_WIDTH = 900;
-const CANVAS_HEIGHT = 700;
 
 // Real-world dimensions in meters (building size)
-// The building represents approximately 30m x 21m
 const BUILDING_WIDTH_METERS = 30;
-const BUILDING_HEIGHT_METERS = 21;
 
 // Export scale factor: SVG units to meters
 // Canvas is 900x700, with 40px margin on each side, so usable area is 820x620
@@ -169,22 +169,22 @@ function renderDoorOpening(door: { x: number; y: number; direction: 'top' | 'bot
 
     switch (direction) {
         case 'top':
-            wallGap = `<rect x="${x}" y="${y - 2}" width="${gapWidth}" height="6" fill="#F5F5F5"/>`;
+            wallGap = `<rect x="${x}" y="${y - INNER_WALL_THICKNESS / 2}" width="${gapWidth}" height="${INNER_WALL_THICKNESS + 2}" fill="#F5F5F5"/>`;
             arcPath = `M ${x} ${y} A ${r} ${r} 0 0 1 ${x + r} ${y - r}`;
             doorLine = `M ${x} ${y} L ${x + r} ${y - r}`;
             break;
         case 'bottom':
-            wallGap = `<rect x="${x}" y="${y - 2}" width="${gapWidth}" height="6" fill="#F5F5F5"/>`;
+            wallGap = `<rect x="${x}" y="${y - INNER_WALL_THICKNESS / 2}" width="${gapWidth}" height="${INNER_WALL_THICKNESS + 2}" fill="#F5F5F5"/>`;
             arcPath = `M ${x} ${y} A ${r} ${r} 0 0 0 ${x + r} ${y + r}`;
             doorLine = `M ${x} ${y} L ${x + r} ${y + r}`;
             break;
         case 'left':
-            wallGap = `<rect x="${x - 2}" y="${y}" width="6" height="${gapWidth}" fill="#F5F5F5"/>`;
+            wallGap = `<rect x="${x - INNER_WALL_THICKNESS / 2}" y="${y}" width="${INNER_WALL_THICKNESS + 2}" height="${gapWidth}" fill="#F5F5F5"/>`;
             arcPath = `M ${x} ${y} A ${r} ${r} 0 0 0 ${x - r} ${y + r}`;
             doorLine = `M ${x} ${y} L ${x - r} ${y + r}`;
             break;
         case 'right':
-            wallGap = `<rect x="${x - 2}" y="${y}" width="6" height="${gapWidth}" fill="#F5F5F5"/>`;
+            wallGap = `<rect x="${x - INNER_WALL_THICKNESS / 2}" y="${y}" width="${INNER_WALL_THICKNESS + 2}" height="${gapWidth}" fill="#F5F5F5"/>`;
             arcPath = `M ${x} ${y} A ${r} ${r} 0 0 1 ${x + r} ${y + r}`;
             doorLine = `M ${x} ${y} L ${x + r} ${y + r}`;
             break;
@@ -206,7 +206,7 @@ function renderRoom(room: Room): string {
 
     return `
     <rect x="${x}" y="${y}" width="${width}" height="${height}" 
-          fill="${color}" stroke="#333" stroke-width="2"
+          fill="${color}" stroke="#333" stroke-width="${INNER_WALL_THICKNESS}"
           data-room-id="${room.id}" data-room-type="${type}" 
           data-room-label="${room.uniqueLabel}"
           data-room-x="${x}" data-room-y="${y}"
@@ -219,6 +219,130 @@ function renderRoom(room: Room): string {
       ${label}
     </text>
   `;
+}
+
+// Render window markings on exterior room walls
+// Windows are placed on walls that face outside the building
+function renderExteriorWindows(
+    rooms: Room[],
+    margin: number,
+    usableWidth: number,
+    topRowY: number,
+    bottomRowY: number,
+    _rowHeight: number,
+    entranceX: number,
+    entranceWidth: number
+): string {
+    let windows = '';
+    // Window marks stay within wall thickness
+    const windowMarkLength = OUTER_WALL_THICKNESS / 2;
+
+    // Track toilets that already have a window
+    const toiletsWithWindow = new Set<string>();
+
+    // For each room, check if it's on an exterior wall
+    for (const room of rooms) {
+        // Skip corridor/public area/entrance
+        if (room.type === 'public' || room.type === 'entrance') continue;
+
+        // For toilets, only add one window
+        const isToilet = room.type === 'toilet';
+        if (isToilet && toiletsWithWindow.has(room.id)) continue;
+
+        let windowAdded = false;
+
+        // Check if room is on the top exterior (facing north)
+        if (room.y === topRowY && !(isToilet && windowAdded)) {
+            const windowX = room.x + room.width / 2 - WINDOW_WIDTH / 2;
+            const windowY = room.y;
+
+            // White background to cut through wall
+            windows += `
+            <rect x="${windowX}" y="${windowY - OUTER_WALL_THICKNESS / 2}" width="${WINDOW_WIDTH}" height="${OUTER_WALL_THICKNESS}" fill="white"/>
+            `;
+            // Window symbol: two parallel lines within wall thickness
+            windows += `
+            <line x1="${windowX}" y1="${windowY - windowMarkLength}" x2="${windowX}" y2="${windowY + windowMarkLength}" 
+                  stroke="#333" stroke-width="2"/>
+            <line x1="${windowX + WINDOW_WIDTH}" y1="${windowY - windowMarkLength}" x2="${windowX + WINDOW_WIDTH}" y2="${windowY + windowMarkLength}" 
+                  stroke="#333" stroke-width="2"/>
+            <line x1="${windowX}" y1="${windowY}" x2="${windowX + WINDOW_WIDTH}" y2="${windowY}" 
+                  stroke="#666" stroke-width="1"/>
+            `;
+            windowAdded = true;
+            if (isToilet) toiletsWithWindow.add(room.id);
+        }
+
+        // Check if room is on the bottom exterior (facing south/front)
+        // Skip if it overlaps with entrance area
+        if (room.y === bottomRowY && !(isToilet && windowAdded)) {
+            const roomRight = room.x + room.width;
+            const entranceRight = entranceX + entranceWidth;
+
+            // Only add window if room doesn't overlap with entrance
+            const overlapsEntrance = room.x < entranceRight && roomRight > entranceX;
+
+            if (!overlapsEntrance) {
+                const windowX = room.x + room.width / 2 - WINDOW_WIDTH / 2;
+                const windowY = room.y + room.height;
+
+                windows += `
+                <rect x="${windowX}" y="${windowY - OUTER_WALL_THICKNESS / 2}" width="${WINDOW_WIDTH}" height="${OUTER_WALL_THICKNESS}" fill="white"/>
+                `;
+                windows += `
+                <line x1="${windowX}" y1="${windowY - windowMarkLength}" x2="${windowX}" y2="${windowY + windowMarkLength}" 
+                      stroke="#333" stroke-width="2"/>
+                <line x1="${windowX + WINDOW_WIDTH}" y1="${windowY - windowMarkLength}" x2="${windowX + WINDOW_WIDTH}" y2="${windowY + windowMarkLength}" 
+                      stroke="#333" stroke-width="2"/>
+                <line x1="${windowX}" y1="${windowY}" x2="${windowX + WINDOW_WIDTH}" y2="${windowY}" 
+                      stroke="#666" stroke-width="1"/>
+                `;
+                windowAdded = true;
+                if (isToilet) toiletsWithWindow.add(room.id);
+            }
+        }
+
+        // Check if room is on the left exterior (facing west)
+        if (room.x === margin && !(isToilet && windowAdded)) {
+            const windowX = room.x;
+            const windowY = room.y + room.height / 2 - WINDOW_WIDTH / 2;
+
+            windows += `
+            <rect x="${windowX - OUTER_WALL_THICKNESS / 2}" y="${windowY}" width="${OUTER_WALL_THICKNESS}" height="${WINDOW_WIDTH}" fill="white"/>
+            `;
+            windows += `
+            <line x1="${windowX - windowMarkLength}" y1="${windowY}" x2="${windowX + windowMarkLength}" y2="${windowY}" 
+                  stroke="#333" stroke-width="2"/>
+            <line x1="${windowX - windowMarkLength}" y1="${windowY + WINDOW_WIDTH}" x2="${windowX + windowMarkLength}" y2="${windowY + WINDOW_WIDTH}" 
+                  stroke="#333" stroke-width="2"/>
+            <line x1="${windowX}" y1="${windowY}" x2="${windowX}" y2="${windowY + WINDOW_WIDTH}" 
+                  stroke="#666" stroke-width="1"/>
+            `;
+            windowAdded = true;
+            if (isToilet) toiletsWithWindow.add(room.id);
+        }
+
+        // Check if room is on the right exterior (facing east)
+        if (room.x + room.width === margin + usableWidth && !(isToilet && windowAdded)) {
+            const windowX = room.x + room.width;
+            const windowY = room.y + room.height / 2 - WINDOW_WIDTH / 2;
+
+            windows += `
+            <rect x="${windowX - OUTER_WALL_THICKNESS / 2}" y="${windowY}" width="${OUTER_WALL_THICKNESS}" height="${WINDOW_WIDTH}" fill="white"/>
+            `;
+            windows += `
+            <line x1="${windowX - windowMarkLength}" y1="${windowY}" x2="${windowX + windowMarkLength}" y2="${windowY}" 
+                  stroke="#333" stroke-width="2"/>
+            <line x1="${windowX - windowMarkLength}" y1="${windowY + WINDOW_WIDTH}" x2="${windowX + windowMarkLength}" y2="${windowY + WINDOW_WIDTH}" 
+                  stroke="#333" stroke-width="2"/>
+            <line x1="${windowX}" y1="${windowY}" x2="${windowX}" y2="${windowY + WINDOW_WIDTH}" 
+                  stroke="#666" stroke-width="1"/>
+            `;
+            if (isToilet) toiletsWithWindow.add(room.id);
+        }
+    }
+
+    return windows;
 }
 
 function renderEntranceDoor(entrance: Room, canvasHeight: number): string {
@@ -417,9 +541,14 @@ export function generateFloorPlan(config: RoomConfig): string {
       Floor Plan - Generated Layout
     </text>
 
+    <!-- Outer Building Perimeter (thick wall) -->
+    <rect x="${margin}" y="${topRowY}" 
+          width="${usableWidth}" height="${usableHeight}" 
+          fill="none" stroke="#333" stroke-width="${OUTER_WALL_THICKNESS}"/>
+
     <!-- Public Corridor (full width) -->
     <rect x="${corridorX}" y="${corridorY}" width="${corridorWidth}" height="${rowHeight}" 
-          fill="${ROOM_COLORS.public}" stroke="#333" stroke-width="2"
+          fill="${ROOM_COLORS.public}" stroke="#333" stroke-width="${INNER_WALL_THICKNESS}"
           data-room-id="corridor" data-room-type="public" 
           data-room-label="Public Area"
           data-room-x="${corridorX}" data-room-y="${corridorY}"
@@ -433,7 +562,7 @@ export function generateFloorPlan(config: RoomConfig): string {
     </text>
 
     <!-- Emergency Exit (right side) -->
-    <rect x="${emergencyX - 2}" y="${emergencyY}" width="6" height="${DOOR_WIDTH}" fill="${ROOM_COLORS.public}"/>
+    <rect x="${emergencyX - OUTER_WALL_THICKNESS / 2}" y="${emergencyY}" width="${OUTER_WALL_THICKNESS + 2}" height="${DOOR_WIDTH}" fill="${ROOM_COLORS.public}"/>
     <path d="M ${emergencyX} ${emergencyY} A ${r} ${r} 0 0 1 ${emergencyX + r} ${emergencyY + r}" fill="none" stroke="#666" stroke-width="1.5" stroke-dasharray="3,2"/>
     <path d="M ${emergencyX} ${emergencyY} L ${emergencyX + r} ${emergencyY + r}" fill="none" stroke="#c00" stroke-width="2.5"/>
     <circle cx="${emergencyX}" cy="${emergencyY}" r="3" fill="#c00"/>
@@ -458,8 +587,11 @@ export function generateFloorPlan(config: RoomConfig): string {
     const openGapWidth = Math.min(entranceWidth - 20, 100);
     const openGapX = entrance.x + (entranceWidth - openGapWidth) / 2;
     svg += `
-    <rect x="${openGapX}" y="${bottomRowY - 2}" width="${openGapWidth}" height="6" fill="${ROOM_COLORS.public}"/>
+    <rect x="${openGapX}" y="${bottomRowY - INNER_WALL_THICKNESS / 2}" width="${openGapWidth}" height="${INNER_WALL_THICKNESS + 2}" fill="${ROOM_COLORS.public}"/>
     `;
+
+    // Render exterior windows on room walls
+    svg += renderExteriorWindows(rooms, margin, usableWidth, topRowY, bottomRowY, rowHeight, entranceX, entranceWidth);
 
     // Render entrance door to outside
     svg += renderEntranceDoor(entrance, canvasHeight);

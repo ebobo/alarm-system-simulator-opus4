@@ -2,7 +2,7 @@
 // Generates Device List and C&E Matrix sheets
 
 import * as XLSX from 'xlsx';
-import type { RoomConfig, RoomType } from './floorPlanGenerator';
+import type { RoomType } from './floorPlanGenerator';
 
 // Device types for export
 type DeviceExportType = 'H/M Detector' | 'MCP' | 'Loop Sounder';
@@ -14,25 +14,6 @@ interface DeviceListEntry {
     location: string;
     serialNumber: string; // Always empty for export
 }
-
-interface CEMatrixEntry {
-    outputDevice: string;
-    outputLocation: string;
-    triggers: Map<string, string>; // input device label -> "X" or number for AND group
-}
-
-/**
- * Room labels for unique naming
- */
-const ROOM_LABELS: Record<RoomType, string> = {
-    office: 'Office',
-    meeting: 'Meeting Room',
-    toilet: 'Toilet',
-    entrance: 'Main Entrance',
-    public: 'Public Area',
-    server: 'Server Room',
-    storage: 'Storage',
-};
 
 /**
  * Extract room list from SVG content by parsing room labels
@@ -147,9 +128,9 @@ function generateCEMatrix(devices: DeviceListEntry[]): {
 
     // Create matrix - all X's for OR logic
     const matrix: string[][] = [];
-    for (const output of outputs) {
+    for (const _output of outputs) {
         const row: string[] = [];
-        for (const input of inputs) {
+        for (const _input of inputs) {
             row.push('X'); // All inputs trigger all outputs
         }
         matrix.push(row);
