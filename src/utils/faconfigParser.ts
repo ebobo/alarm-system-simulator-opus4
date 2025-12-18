@@ -1,5 +1,6 @@
 // .faconfig file parser and validator
-import type { FAConfig } from '../types/faconfig';
+import type { FAConfig, FAConfigDevice } from '../types/faconfig';
+import type { PlacedDevice } from '../types/devices';
 
 export type ParseResult =
     | { success: true; config: FAConfig }
@@ -28,7 +29,7 @@ export function parseFAConfig(jsonString: string): ParseResult {
 }
 
 /**
- * Validate that an object matches the FAConfig schema
+ * Validate that an object matches the FAConfig schema (UUID-based format)
  */
 export function validateFAConfig(obj: unknown): { valid: true } | { valid: false; error: string } {
     if (!obj || typeof obj !== 'object') {
@@ -40,10 +41,6 @@ export function validateFAConfig(obj: unknown): { valid: true } | { valid: false
     // Check required fields
     if (typeof config.version !== 'string') {
         return { valid: false, error: 'Missing or invalid "version" field' };
-    }
-
-    if (config.version !== '1.0') {
-        return { valid: false, error: `Unsupported version: ${config.version}. Expected "1.0"` };
     }
 
     if (typeof config.projectName !== 'string') {
@@ -80,16 +77,49 @@ export function validateFAConfig(obj: unknown): { valid: true } | { valid: false
         return { valid: false, error: 'Missing or invalid "zones.alarm" array' };
     }
 
-    // Validate causeEffect (optional but must be array if present)
+    // Validate detection zones
+    for (let i = 0; i < zones.detection.length; i++) {
+        const zone = zones.detection[i] as Record<string, unknown>;
+        if (typeof zone.uuid !== 'string') {
+            return { valid: false, error: `Detection zone ${i}: missing "uuid"` };
+        }
+        if (!Array.isArray(zone.devices)) {
+            return { valid: false, error: `Detection zone ${i}: missing "devices" array` };
+        }
+    }
+
+    // Validate alarm zones
+    for (let i = 0; i < zones.alarm.length; i++) {
+        const zone = zones.alarm[i] as Record<string, unknown>;
+        if (typeof zone.uuid !== 'string') {
+            return { valid: false, error: `Alarm zone ${i}: missing "uuid"` };
+        }
+        if (!Array.isArray(zone.devices)) {
+            return { valid: false, error: `Alarm zone ${i}: missing "devices" array` };
+        }
+    }
+
+    // Validate causeEffect
     if (!Array.isArray(config.causeEffect)) {
         return { valid: false, error: 'Missing or invalid "causeEffect" array' };
+    }
+
+    // Validate each C&E rule
+    for (let i = 0; i < config.causeEffect.length; i++) {
+        const rule = config.causeEffect[i] as Record<string, unknown>;
+        if (typeof rule.inputZone !== 'string') {
+            return { valid: false, error: `C&E rule ${i}: missing "inputZone" UUID` };
+        }
+        if (typeof rule.outputZone !== 'string') {
+            return { valid: false, error: `C&E rule ${i}: missing "outputZone" UUID` };
+        }
     }
 
     return { valid: true };
 }
 
 /**
- * Validate a single device entry
+ * Validate a single device entry (UUID-based format)
  */
 function validateDevice(device: unknown, index: number): { valid: true } | { valid: false; error: string } {
     if (!device || typeof device !== 'object') {
@@ -97,6 +127,10 @@ function validateDevice(device: unknown, index: number): { valid: true } | { val
     }
 
     const d = device as Record<string, unknown>;
+
+    if (typeof d.uuid !== 'string') {
+        return { valid: false, error: `Device ${index}: missing or invalid "uuid"` };
+    }
 
     if (typeof d.address !== 'string') {
         return { valid: false, error: `Device ${index}: missing or invalid "address"` };
@@ -109,10 +143,6 @@ function validateDevice(device: unknown, index: number): { valid: true } | { val
 
     if (typeof d.location !== 'string') {
         return { valid: false, error: `Device ${index}: missing or invalid "location"` };
-    }
-
-    if (typeof d.zone !== 'string') {
-        return { valid: false, error: `Device ${index}: missing or invalid "zone"` };
     }
 
     return { valid: true };
@@ -140,4 +170,120 @@ export function getConfigSummary(config: FAConfig): {
         alarmZones: config.zones.alarm.length,
         ceRules: config.causeEffect.length,
     };
+}
+
+/**
+ * Build a lookup map from device address to device
+ */
+export function buildDeviceAddressMap(config: FAConfig): Map<string, FAConfigDevice> {
+    const map = new Map<string, FAConfigDevice>();
+    for (const device of config.devices) {
+        map.set(device.address, device);
+    }
+    return map;
+}
+
+/**
+ * Result of device matching validation
+ */
+export interface DeviceMatchResult {
+    valid: boolean;
+    matched: string[];      // Device addresses that match
+    missing: string[];      // Config devices not found in placed devices
+    extra: string[];        // Placed devices not in config
+}
+
+/**
+ * Validate that placed devices match the config
+ * Devices are matched by address (the loop label like "A.001.001")
+ */
+export function validateDeviceMatch(
+    config: FAConfig,
+    placedDevices: PlacedDevice[]
+): DeviceMatchResult {
+    const configAddresses = new Set(config.devices.map(d => d.address));
+
+    // Get addresses from placed devices that have them
+    // PlacedDevice may need an address field - for now we'll use label or instanceId
+    const placedAddresses = new Set<string>();
+    for (const device of placedDevices) {
+        // Skip non-loop devices (panel, loop-driver)
+        if (device.typeId === 'panel' || device.typeId === 'loop-driver') {
+            continue;
+        }
+        // Use the device's label if it looks like an address, otherwise skip
+        if (device.label && /^[A-Z]\.\d{3}\.\d{3}$/.test(device.label)) {
+            placedAddresses.add(device.label);
+        }
+    }
+
+    const matched: string[] = [];
+    const missing: string[] = [];
+    const extra: string[] = [];
+
+    // Find matched and missing
+    for (const addr of configAddresses) {
+        if (placedAddresses.has(addr)) {
+            matched.push(addr);
+        } else {
+            missing.push(addr);
+        }
+    }
+
+    // Find extra devices
+    for (const addr of placedAddresses) {
+        if (!configAddresses.has(addr)) {
+            extra.push(addr);
+        }
+    }
+
+    return {
+        valid: missing.length === 0,
+        matched,
+        missing,
+        extra
+    };
+}
+
+/**
+ * Get device addresses for a zone UUID
+ */
+export function getZoneDeviceAddresses(config: FAConfig, zoneUuid: string): string[] {
+    // Check detection zones
+    for (const zone of config.zones.detection) {
+        if (zone.uuid === zoneUuid) {
+            return zone.devices;
+        }
+    }
+    // Check alarm zones
+    for (const zone of config.zones.alarm) {
+        if (zone.uuid === zoneUuid) {
+            return zone.devices;
+        }
+    }
+    return [];
+}
+
+/**
+ * Get all output device addresses for a given input device address
+ * Based on C&E rules: find which DZ the device belongs to, then find linked AZ devices
+ */
+export function getOutputDevicesForInput(config: FAConfig, inputAddress: string): string[] {
+    const outputs = new Set<string>();
+
+    // Find which detection zone contains this device
+    for (const dz of config.zones.detection) {
+        if (dz.devices.includes(inputAddress)) {
+            // Find C&E rules that use this DZ as input
+            for (const rule of config.causeEffect) {
+                if (rule.inputZone === dz.uuid) {
+                    // Get all devices in the output zone
+                    const outputDevices = getZoneDeviceAddresses(config, rule.outputZone);
+                    outputDevices.forEach(addr => outputs.add(addr));
+                }
+            }
+        }
+    }
+
+    return Array.from(outputs);
 }
