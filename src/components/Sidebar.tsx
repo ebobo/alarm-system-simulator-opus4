@@ -42,7 +42,7 @@ export default function Sidebar({
     };
 
     return (
-        <div className="w-72 bg-gradient-to-b from-slate-800 to-slate-900 text-white flex flex-col">
+        <div className="w-56 bg-gradient-to-b from-slate-800 to-slate-900 text-white flex flex-col">
             {/* Header */}
             <div className="p-6 border-b border-slate-700">
                 <div className="flex items-center gap-3 mb-2">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import type { DragEndEvent, DragStartEvent, DragMoveEvent } from '@dnd-kit/core';
 import FloorPlanViewer from './components/FloorPlanViewer';
@@ -8,12 +8,15 @@ import ConfigModal from './components/ConfigModal';
 import SaveNameDialog from './components/SaveNameDialog';
 import ViewTabs from './components/ViewTabs';
 import PanelView from './views/PanelView';
+import PanelSidebar from './components/panel/PanelSidebar';
 import { generateFloorPlan, defaultConfig } from './utils/floorPlanGenerator';
 import { useCoordinates } from './hooks/useCoordinates';
 import { generateInstanceId, generateSerialNumber, getDeviceType } from './types/devices';
 import DevicePropertyPanel from './components/DevicePropertyPanel';
 import { saveProject, loadProject, deleteProject, getProjectList, generateProjectId, getMostRecentProject } from './utils/storage';
 import { exportToExcel, exportSVG } from './utils/excelExport';
+import { deriveModulesFromFloorPlan } from './utils/moduleUtils';
+import { validateDeviceMatch } from './utils/faconfigParser';
 import type { RoomConfig } from './utils/floorPlanGenerator';
 import type { PlacedDevice, ViewportTransform, Connection, DrawingWire, RoomInfo } from './types/devices';
 import type { ProjectListEntry } from './types/storage';
@@ -145,10 +148,25 @@ function App() {
   const configInputRef = useRef<HTMLInputElement>(null);
   const [projectList, setProjectList] = useState<ProjectListEntry[]>([]);
 
-  // Compute if panel view should be enabled
+  // Panel power state (shared with PanelView via prop drilling)
+  const [isPanelPoweredOn, setIsPanelPoweredOn] = useState(false);
+
+  // Computed: panel modules derived from floor plan
+  const panelModules = useMemo(() =>
+    deriveModulesFromFloorPlan(placedDevices, connections),
+    [placedDevices, connections]
+  );
+
+  // Computed: device match result for panel
+  const panelDeviceMatch = useMemo(() => {
+    if (!loadedConfig || !isPanelPoweredOn) return null;
+    return validateDeviceMatch(loadedConfig, placedDevices);
+  }, [loadedConfig, placedDevices, isPanelPoweredOn]);
+
+  // Check if panel/loop driver exist
   const hasPanelDevice = placedDevices.some(d => d.typeId === 'panel');
-  const isProjectSaved = currentProjectName !== 'New Project';
-  const isPanelEnabled = hasPanelDevice && isProjectSaved;
+  const isProjectSaved = currentProjectId !== null;
+  const isPanelEnabled = isProjectSaved && hasPanelDevice;
   const panelDisabledReason: 'no-panel' | 'not-saved' | undefined =
     !isProjectSaved ? 'not-saved' : !hasPanelDevice ? 'no-panel' : undefined;
 
@@ -862,13 +880,16 @@ function App() {
               connections={connections}
               loadedConfig={loadedConfig}
               importError={configImportError}
+              isPoweredOn={isPanelPoweredOn}
+              onPowerChange={setIsPanelPoweredOn}
+              deviceMatch={panelDeviceMatch}
             />
           )}
         </div>
 
         {/* Right Sidebar - Device Palette and Property Panel (only show in floor plan view) */}
         {activeView === 'floorplan' && (
-          <div className="w-64 flex flex-col bg-gradient-to-b from-slate-800 to-slate-900 border-l border-slate-700">
+          <div className="w-80 flex flex-col bg-gradient-to-b from-slate-800 to-slate-900 border-l border-slate-700">
             <div className="flex-1 overflow-hidden">
               <DevicePalette />
             </div>
@@ -896,6 +917,18 @@ function App() {
                 setPlacedDevices(prev => prev.filter(d => d.instanceId !== deviceId));
                 setSelectedDeviceId(null);
               }}
+            />
+          </div>
+        )}
+
+        {/* Right Sidebar - Panel Status (only show in panel view) */}
+        {activeView === 'panel' && (
+          <div className="w-80 flex flex-col bg-gradient-to-b from-slate-800 to-slate-900 border-l border-slate-700">
+            <PanelSidebar
+              config={loadedConfig}
+              matchResult={panelDeviceMatch}
+              isPoweredOn={isPanelPoweredOn}
+              modules={panelModules}
             />
           </div>
         )}

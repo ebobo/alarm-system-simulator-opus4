@@ -1,14 +1,13 @@
 // Panel Simulator View - AutroSafe style control panel
-import { useState, useMemo } from 'react';
 import PanelFrame from '../components/panel/PanelFrame';
 import LCDDisplay from '../components/panel/LCDDisplay';
 import LEDIndicators from '../components/panel/LEDIndicators';
 import ControlButtons from '../components/panel/ControlButtons';
-import ConfigStatusSidebar from '../components/panel/ConfigStatusSidebar';
 import type { LEDState, ConfigLedState } from '../components/panel/LEDIndicators';
 import type { PlacedDevice, Connection } from '../types/devices';
 import type { FAConfig } from '../types/faconfig';
-import { getConfigSummary, validateDeviceMatch } from '../utils/faconfigParser';
+import type { DeviceMatchResult } from '../utils/faconfigParser';
+import { getConfigSummary } from '../utils/faconfigParser';
 
 interface PanelViewProps {
     projectName: string;
@@ -16,6 +15,9 @@ interface PanelViewProps {
     connections: Connection[];
     loadedConfig: FAConfig | null;
     importError: string | null;
+    isPoweredOn: boolean;
+    onPowerChange: (powered: boolean) => void;
+    deviceMatch: DeviceMatchResult | null;
 }
 
 export default function PanelView({
@@ -23,10 +25,11 @@ export default function PanelView({
     placedDevices,
     connections,
     loadedConfig,
-    importError
+    importError,
+    isPoweredOn,
+    onPowerChange,
+    deviceMatch
 }: PanelViewProps) {
-    // Panel power state
-    const [isPoweredOn, setIsPoweredOn] = useState(false);
 
     // Check if panel and loop driver exist
     const panelDevice = placedDevices.find(d => d.typeId === 'panel');
@@ -45,12 +48,6 @@ export default function PanelView({
 
     // Config summary
     const configSummary = hasConfig ? getConfigSummary(loadedConfig) : null;
-
-    // Device matching result (only computed when powered on with config)
-    const deviceMatch = useMemo(() => {
-        if (!hasConfig || !isPoweredOn) return null;
-        return validateDeviceMatch(loadedConfig, placedDevices);
-    }, [loadedConfig, placedDevices, hasConfig, isPoweredOn]);
 
     // Determine if there's a config mismatch fault
     const isConfigMismatch = isPoweredOn && deviceMatch !== null && !deviceMatch.valid;
@@ -156,80 +153,68 @@ export default function PanelView({
 
     // Handle power on button
     const handlePowerOn = () => {
-        setIsPoweredOn(true);
+        onPowerChange(true);
     };
 
     // Handle power off (reset)
     const handlePowerOff = () => {
-        setIsPoweredOn(false);
+        onPowerChange(false);
     };
 
     return (
-        <div className="flex-1 flex">
-            {/* Main panel area */}
-            <div className="flex-1 flex items-center justify-center bg-slate-900 p-8">
-                <div className="max-w-2xl w-full">
-                    <PanelFrame
-                        projectName={projectName}
-                        statusText={getStatusText()}
-                    >
-                        {/* LCD Display */}
-                        <div className="mb-6">
-                            <LCDDisplay
-                                status={lcdContent.status}
-                                message={lcdContent.message}
-                                details={lcdContent.details}
-                                hint={lcdContent.hint}
-                            />
-                        </div>
+        <div className="flex-1 flex items-center justify-center bg-slate-900 p-8">
+            <div className="max-w-2xl w-full">
+                <PanelFrame
+                    projectName={projectName}
+                    statusText={getStatusText()}
+                >
+                    {/* LCD Display */}
+                    <div className="mb-6">
+                        <LCDDisplay
+                            status={lcdContent.status}
+                            message={lcdContent.message}
+                            details={lcdContent.details}
+                            hint={lcdContent.hint}
+                        />
+                    </div>
 
-                        {/* Error message */}
-                        {importError && (
-                            <div className="mb-4 p-3 bg-red-900/50 border border-red-600 rounded-lg text-red-300 text-sm">
-                                <span className="font-semibold">Import Error:</span> {importError}
-                            </div>
+                    {/* Error message */}
+                    {importError && (
+                        <div className="mb-4 p-3 bg-red-900/50 border border-red-600 rounded-lg text-red-300 text-sm">
+                            <span className="font-semibold">Import Error:</span> {importError}
+                        </div>
+                    )}
+
+                    {/* Status LEDs */}
+                    <div className="mb-8">
+                        <LEDIndicators state={ledState} />
+                    </div>
+
+                    {/* Control Buttons */}
+                    <div className="mb-6">
+                        <ControlButtons disabled={true} />
+                    </div>
+
+                    {/* Bottom Actions */}
+                    <div className="flex gap-3 justify-center border-t border-slate-600 pt-6">
+                        {!isPoweredOn ? (
+                            <button
+                                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white font-semibold transition-colors disabled:bg-slate-600 disabled:cursor-not-allowed"
+                                disabled={isHardwareFault || !hasConfig}
+                                onClick={handlePowerOn}
+                            >
+                                Power On Loop
+                            </button>
+                        ) : (
+                            <button
+                                className="px-6 py-2.5 bg-red-600 hover:bg-red-500 rounded-lg text-white font-semibold transition-colors"
+                                onClick={handlePowerOff}
+                            >
+                                Power Off
+                            </button>
                         )}
-
-                        {/* Status LEDs */}
-                        <div className="mb-8">
-                            <LEDIndicators state={ledState} />
-                        </div>
-
-                        {/* Control Buttons */}
-                        <div className="mb-6">
-                            <ControlButtons disabled={true} />
-                        </div>
-
-                        {/* Bottom Actions */}
-                        <div className="flex gap-3 justify-center border-t border-slate-600 pt-6">
-                            {!isPoweredOn ? (
-                                <button
-                                    className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white font-semibold transition-colors disabled:bg-slate-600 disabled:cursor-not-allowed"
-                                    disabled={isHardwareFault || !hasConfig}
-                                    onClick={handlePowerOn}
-                                >
-                                    Power On Loop
-                                </button>
-                            ) : (
-                                <button
-                                    className="px-6 py-2.5 bg-red-600 hover:bg-red-500 rounded-lg text-white font-semibold transition-colors"
-                                    onClick={handlePowerOff}
-                                >
-                                    Power Off
-                                </button>
-                            )}
-                        </div>
-                    </PanelFrame>
-                </div>
-            </div>
-
-            {/* Config Status Sidebar - styled to match floor plan sidebar */}
-            <div className="w-64 flex flex-col bg-gradient-to-b from-slate-800 to-slate-900 border-l border-slate-700">
-                <ConfigStatusSidebar
-                    config={loadedConfig}
-                    matchResult={deviceMatch}
-                    isPoweredOn={isPoweredOn}
-                />
+                    </div>
+                </PanelFrame>
             </div>
         </div>
     );
