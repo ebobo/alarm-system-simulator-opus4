@@ -61,7 +61,7 @@ export const MODULE_TYPE_CONFIG: Record<ModuleType, ModuleTypeConfig> = {
     },
     'loop-driver': {
         name: 'Loop Driver',
-        icon: '📡',
+        icon: 'LD',
         colorClass: 'cyan'
     }
 };

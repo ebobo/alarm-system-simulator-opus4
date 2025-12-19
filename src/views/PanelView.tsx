@@ -197,7 +197,7 @@ export default function PanelView({
                             disabled={isHardwareFault || !hasConfig}
                             onClick={handlePowerOn}
                         >
-                            {isPoweredOn ? 'Raise Loop Again' : 'Raise Loop'}
+                            Raise Loop
                         </button>
                     </div>
                 </PanelFrame>

@@ -157,13 +157,41 @@ function App() {
   // Panel sidebar tab state (persisted across view changes)
   const [panelSidebarTab, setPanelSidebarTab] = useState<'modules' | 'config'>('modules');
 
-  // Computed: panel modules derived from floor plan (discovery runs when powered on)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // Store discovered devices in state - only updates when Raise Loop is clicked
+  const [discoveredDevicesMap, setDiscoveredDevicesMap] = useState<Map<string, { cAddress: number; discoveredFrom: 'out' | 'in' }>>(new Map());
+
+  // Run discovery when discoveryVersion changes (Raise Loop clicked)
+  useEffect(() => {
+    if (!isPanelPoweredOn) {
+      // Clear discovered devices when powered off
+      setDiscoveredDevicesMap(new Map());
+      return;
+    }
+
+    // Run discovery - import and call discovery function
+    import('./utils/loopDiscovery').then(({ discoverAllLoops }) => {
+      const discovered = discoverAllLoops(placedDevices, connections);
+      const newMap = new Map<string, { cAddress: number; discoveredFrom: 'out' | 'in' }>();
+
+      for (const [, devices] of discovered) {
+        for (const device of devices) {
+          newMap.set(device.instanceId, {
+            cAddress: device.cAddress,
+            discoveredFrom: device.discoveredFrom
+          });
+        }
+      }
+
+      setDiscoveredDevicesMap(newMap);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [discoveryVersion, isPanelPoweredOn]); // Only run on Raise Loop click, NOT on device/connection changes
+
+  // Computed: panel modules derived from floor plan
+  // Uses discoveredDevicesMap for device info when powered on
   const panelModules = useMemo(() => {
-    // discoveryVersion is included to force re-computation when Raise Loop is clicked
-    void discoveryVersion;
-    return deriveModulesFromFloorPlan(placedDevices, connections, isPanelPoweredOn);
-  }, [placedDevices, connections, isPanelPoweredOn, discoveryVersion]);
+    return deriveModulesFromFloorPlan(placedDevices, connections, isPanelPoweredOn && discoveredDevicesMap.size > 0);
+  }, [placedDevices, connections, isPanelPoweredOn, discoveredDevicesMap]);
 
   // Computed: device match result for panel
   const panelDeviceMatch = useMemo(() => {
@@ -171,11 +199,11 @@ function App() {
     return validateDeviceMatch(loadedConfig, placedDevices);
   }, [loadedConfig, placedDevices, isPanelPoweredOn]);
 
-  // Sync discovered cAddress back to PlacedDevice when loop is powered on
+  // Sync discovered cAddress back to PlacedDevice when discovery completes
   // This allows the property panel to display the assigned address
   useEffect(() => {
-    if (!isPanelPoweredOn) {
-      // When powered off, clear all cAddress values
+    if (!isPanelPoweredOn || discoveredDevicesMap.size === 0) {
+      // When powered off or no discovery, clear all cAddress values
       setPlacedDevices(prev => {
         const needsUpdate = prev.some(d => d.cAddress !== null);
         if (!needsUpdate) return prev;
@@ -184,25 +212,15 @@ function App() {
       return;
     }
 
-    // When powered on, sync discovered addresses from modules to devices
-    const addressMap = new Map<string, number>();
-    for (const module of panelModules) {
-      if (module.type === 'loop-driver' && module.connectedDevices) {
-        for (const device of module.connectedDevices) {
-          if (device.cAddress !== undefined) {
-            addressMap.set(device.instanceId, device.cAddress);
-          }
-        }
-      }
-    }
-
-    if (addressMap.size > 0) {
-      setPlacedDevices(prev => prev.map(d => ({
+    // Sync discovered addresses to devices
+    setPlacedDevices(prev => prev.map(d => {
+      const discovered = discoveredDevicesMap.get(d.instanceId);
+      return {
         ...d,
-        cAddress: addressMap.get(d.instanceId) ?? d.cAddress
-      })));
-    }
-  }, [isPanelPoweredOn, panelModules]);
+        cAddress: discovered?.cAddress ?? null
+      };
+    }));
+  }, [isPanelPoweredOn, discoveredDevicesMap]);
 
   // Check if panel/loop driver exist
   const hasPanelDevice = placedDevices.some(d => d.typeId === 'panel');
