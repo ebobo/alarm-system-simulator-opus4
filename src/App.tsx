@@ -188,9 +188,13 @@ function App() {
   }, [discoveryVersion, isPanelPoweredOn]); // Only run on Raise Loop click, NOT on device/connection changes
 
   // Computed: panel modules derived from floor plan
-  // Uses discoveredDevicesMap for device info when powered on
+  // Uses discoveredDevicesMap for device info (only populated after Raise Loop click)
   const panelModules = useMemo(() => {
-    return deriveModulesFromFloorPlan(placedDevices, connections, isPanelPoweredOn && discoveredDevicesMap.size > 0);
+    return deriveModulesFromFloorPlan(
+      placedDevices,
+      connections,
+      isPanelPoweredOn && discoveredDevicesMap.size > 0 ? discoveredDevicesMap : undefined
+    );
   }, [placedDevices, connections, isPanelPoweredOn, discoveredDevicesMap]);
 
   // Computed: device match result for panel

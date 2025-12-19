@@ -3,7 +3,6 @@
 
 import type { PlacedDevice, Connection } from '../types/devices';
 import type { PanelModule, ModuleStatus, ConnectedDeviceInfo } from '../types/modules';
-import { discoverLoopDevices } from './loopDiscovery';
 
 /**
  * Get default modules that come with a panel (Controller + Power Supply)
@@ -42,10 +41,10 @@ export function isLoopDriverConnectedToPanel(
 }
 
 /**
- * Count devices connected to a loop driver (for display before power on)
+ * Count devices connected to a loop driver (for display before discovery)
  * Uses simple BFS without address assignment
  */
-function countConnectedLoopDevices(
+export function countConnectedLoopDevices(
     loopDriverId: string,
     panelId: string | undefined,
     connections: Connection[],
@@ -100,23 +99,31 @@ function countConnectedLoopDevices(
 }
 
 /**
+ * Discovered device info for external state
+ */
+export interface DiscoveredDeviceEntry {
+    cAddress: number;
+    discoveredFrom: 'out' | 'in';
+}
+
+/**
  * Derive all panel modules from the current floor plan state
  * 
  * Logic:
  * - If panel is placed: Controller + Power Supply modules are added
  * - For each loop driver: Add Loop Driver module
  *   - Status is 'online' if connected to panel, 'offline' otherwise
- *   - If isPoweredOn: Shows discovered devices with assigned C_Address
- *   - If not powered on: Shows device count only (not discovered yet)
+ *   - If discoveredDevices provided: Shows discovered devices with assigned C_Address
+ *   - If not: Shows "Unknown" (discovery not yet run)
  * 
  * @param placedDevices All placed devices on the floor plan
  * @param connections All wire connections
- * @param isPoweredOn Whether the loop is powered on (for discovery)
+ * @param discoveredDevices Map of instanceId -> discovery info (from Raise Loop click)
  */
 export function deriveModulesFromFloorPlan(
     placedDevices: PlacedDevice[],
     connections: Connection[],
-    isPoweredOn: boolean = false
+    discoveredDevices?: Map<string, DiscoveredDeviceEntry>
 ): PanelModule[] {
     const modules: PanelModule[] = [];
 
@@ -144,31 +151,37 @@ export function deriveModulesFromFloorPlan(
 
         const status: ModuleStatus = isConnected ? 'online' : 'offline';
 
-        // Only discover devices and assign addresses when powered on
+        // Use externally provided discovered devices if available
         let connectedDevices: ConnectedDeviceInfo[] | undefined;
-        let connectedDeviceCount: number;
+        let connectedDeviceCount: number | undefined;
 
-        if (isPoweredOn && isConnected) {
-            // Power on: run discovery algorithm with C_Address assignment
-            const discovered = discoverLoopDevices(ld.instanceId, connections, placedDevices);
-            connectedDevices = discovered.map(d => ({
-                instanceId: d.instanceId,
-                label: d.label,
-                typeId: d.typeId,
-                sn: d.sn,
-                cAddress: d.cAddress,
-                discoveredFrom: d.discoveredFrom
-            }));
-            connectedDeviceCount = discovered.length;
+        if (discoveredDevices && discoveredDevices.size > 0) {
+            // Discovery has been run - show only discovered devices
+            // Filter to devices that belong to this loop driver's chain
+            const allConnectedIds = getConnectedDeviceIds(ld.instanceId, panel.instanceId, connections, placedDevices);
+
+            connectedDevices = [];
+            for (const deviceId of allConnectedIds) {
+                const discoveryInfo = discoveredDevices.get(deviceId);
+                const device = placedDevices.find(d => d.instanceId === deviceId);
+                if (device && discoveryInfo) {
+                    connectedDevices.push({
+                        instanceId: device.instanceId,
+                        label: device.label || device.deviceType,
+                        typeId: device.typeId,
+                        sn: device.sn,
+                        cAddress: discoveryInfo.cAddress,
+                        discoveredFrom: discoveryInfo.discoveredFrom
+                    });
+                }
+            }
+            // Sort by cAddress
+            connectedDevices.sort((a, b) => (a.cAddress ?? 999) - (b.cAddress ?? 999));
+            connectedDeviceCount = connectedDevices.length;
         } else {
-            // Not powered on: just count wired devices (not yet discovered)
-            connectedDeviceCount = countConnectedLoopDevices(
-                ld.instanceId,
-                panel.instanceId,
-                connections,
-                placedDevices
-            );
-            connectedDevices = undefined;  // No discovery data until power on
+            // No discovery yet - show as Unknown
+            connectedDevices = undefined;
+            connectedDeviceCount = undefined;
         }
 
         modules.push({
@@ -184,4 +197,53 @@ export function deriveModulesFromFloorPlan(
     });
 
     return modules;
+}
+
+/**
+ * Get all device IDs connected to a loop driver (helper function)
+ */
+function getConnectedDeviceIds(
+    loopDriverId: string,
+    panelId: string,
+    connections: Connection[],
+    placedDevices: PlacedDevice[]
+): string[] {
+    const ids: string[] = [];
+    const visited = new Set<string>();
+    const queue: string[] = [loopDriverId];
+
+    // Build adjacency list
+    const adjacency = new Map<string, string[]>();
+    for (const conn of connections) {
+        if (!adjacency.has(conn.fromDeviceId)) {
+            adjacency.set(conn.fromDeviceId, []);
+        }
+        if (!adjacency.has(conn.toDeviceId)) {
+            adjacency.set(conn.toDeviceId, []);
+        }
+        adjacency.get(conn.fromDeviceId)!.push(conn.toDeviceId);
+        adjacency.get(conn.toDeviceId)!.push(conn.fromDeviceId);
+    }
+
+    while (queue.length > 0) {
+        const currentId = queue.shift()!;
+        if (visited.has(currentId)) continue;
+        visited.add(currentId);
+
+        const neighbors = adjacency.get(currentId) || [];
+        for (const neighborId of neighbors) {
+            if (visited.has(neighborId)) continue;
+            if (neighborId === panelId) continue;
+
+            const device = placedDevices.find(d => d.instanceId === neighborId);
+            if (device) {
+                if (device.typeId !== 'loop-driver' && device.typeId !== 'panel') {
+                    ids.push(device.instanceId);
+                }
+                queue.push(neighborId);
+            }
+        }
+    }
+
+    return ids;
 }
