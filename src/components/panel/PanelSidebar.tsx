@@ -1,29 +1,31 @@
 // Panel Sidebar - tabbed container for Config and Modules views
 // Replaces ConfigStatusSidebar with tabbed interface
 
-import { useState } from 'react';
 import type { FAConfig } from '../../types/faconfig';
 import type { DeviceMatchResult } from '../../utils/faconfigParser';
 import type { PanelModule } from '../../types/modules';
 import ConfigTab from './ConfigTab';
 import ModulesTab from './ModulesTab';
 
+type TabType = 'config' | 'modules';
+
 interface PanelSidebarProps {
     config: FAConfig | null;
     matchResult: DeviceMatchResult | null;
     isPoweredOn: boolean;
     modules: PanelModule[];
+    activeTab: TabType;
+    onTabChange: (tab: TabType) => void;
 }
-
-type TabType = 'config' | 'modules';
 
 export default function PanelSidebar({
     config,
     matchResult,
     isPoweredOn,
-    modules
+    modules,
+    activeTab,
+    onTabChange
 }: PanelSidebarProps) {
-    const [activeTab, setActiveTab] = useState<TabType>('modules');
 
     // Get status indicator color for header icon
     const getStatusColor = () => {
@@ -65,7 +67,7 @@ export default function PanelSidebar({
                         ? 'text-white border-b-2 border-blue-500 bg-slate-800/50'
                         : 'text-slate-400 hover:text-slate-300 hover:bg-slate-800/30'
                         }`}
-                    onClick={() => setActiveTab('modules')}
+                    onClick={() => onTabChange('modules')}
                 >
                     <span className="flex items-center justify-center gap-1.5">
                         <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -84,7 +86,7 @@ export default function PanelSidebar({
                         ? 'text-white border-b-2 border-blue-500 bg-slate-800/50'
                         : 'text-slate-400 hover:text-slate-300 hover:bg-slate-800/30'
                         }`}
-                    onClick={() => setActiveTab('config')}
+                    onClick={() => onTabChange('config')}
                 >
                     <span className="flex items-center justify-center gap-1.5">
                         <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

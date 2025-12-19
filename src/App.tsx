@@ -151,6 +151,9 @@ function App() {
   // Panel power state (shared with PanelView via prop drilling)
   const [isPanelPoweredOn, setIsPanelPoweredOn] = useState(false);
 
+  // Panel sidebar tab state (persisted across view changes)
+  const [panelSidebarTab, setPanelSidebarTab] = useState<'modules' | 'config'>('modules');
+
   // Computed: panel modules derived from floor plan
   const panelModules = useMemo(() =>
     deriveModulesFromFloorPlan(placedDevices, connections),
@@ -929,6 +932,8 @@ function App() {
               matchResult={panelDeviceMatch}
               isPoweredOn={isPanelPoweredOn}
               modules={panelModules}
+              activeTab={panelSidebarTab}
+              onTabChange={setPanelSidebarTab}
             />
           </div>
         )}
