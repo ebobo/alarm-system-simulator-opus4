@@ -91,8 +91,8 @@ export default function PanelView({
         // No config loaded
         if (!hasConfig) {
             return {
-                status: 'normal' as const,
-                message: 'SYSTEM NORMAL',
+                status: 'fault' as const,
+                message: 'FAULT: NO CONFIG',
                 details: [
                     'No configuration loaded',
                     'Loop: Offline',
@@ -151,14 +151,9 @@ export default function PanelView({
         return `Status: Running - ${deviceMatch?.matched.length || 0} devices online`;
     };
 
-    // Handle power on button
+    // Handle raise loop button - triggers discovery
     const handlePowerOn = () => {
         onPowerChange(true);
-    };
-
-    // Handle power off (reset)
-    const handlePowerOff = () => {
-        onPowerChange(false);
     };
 
     return (
@@ -197,22 +192,13 @@ export default function PanelView({
 
                     {/* Bottom Actions */}
                     <div className="flex gap-3 justify-center border-t border-slate-600 pt-6">
-                        {!isPoweredOn ? (
-                            <button
-                                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white font-semibold transition-colors disabled:bg-slate-600 disabled:cursor-not-allowed"
-                                disabled={isHardwareFault || !hasConfig}
-                                onClick={handlePowerOn}
-                            >
-                                Power On Loop
-                            </button>
-                        ) : (
-                            <button
-                                className="px-6 py-2.5 bg-red-600 hover:bg-red-500 rounded-lg text-white font-semibold transition-colors"
-                                onClick={handlePowerOff}
-                            >
-                                Power Off
-                            </button>
-                        )}
+                        <button
+                            className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white font-semibold transition-colors disabled:bg-slate-600 disabled:cursor-not-allowed"
+                            disabled={isHardwareFault || !hasConfig}
+                            onClick={handlePowerOn}
+                        >
+                            {isPoweredOn ? 'Raise Loop Again' : 'Raise Loop'}
+                        </button>
                     </div>
                 </PanelFrame>
             </div>

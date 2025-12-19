@@ -15,7 +15,7 @@ export default function PanelFrame({ projectName, children, statusText }: PanelF
                 <div className="bg-gradient-to-b from-slate-700 to-slate-800 rounded-2xl border-4 border-slate-600 shadow-2xl p-8">
                     {/* Panel Header */}
                     <div className="text-center mb-6">
-                        <h2 className="text-2xl font-bold text-white tracking-wider">AUTROSAFE</h2>
+                        <h2 className="text-2xl font-bold text-white tracking-wider">AutroSafe V</h2>
                         <p className="text-slate-400 text-sm">{projectName} Fire Alarm Panel</p>
                     </div>
 

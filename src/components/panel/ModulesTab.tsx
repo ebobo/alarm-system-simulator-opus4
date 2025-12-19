@@ -61,11 +61,7 @@ export default function ModulesTab({ modules }: ModulesTabProps) {
         }
     };
 
-    // Find loop driver with devices for flex expansion
-    const loopDriverWithDevices = modules.find(m =>
-        m.type === 'loop-driver' && m.connectedDevices && m.connectedDevices.length > 0
-    );
-    const isAnyLoopDriverExpanded = loopDriverWithDevices && expandedModules.has(loopDriverWithDevices.id);
+
 
     return (
         <div className="flex-1 p-4 overflow-y-auto flex flex-col">
@@ -91,7 +87,7 @@ export default function ModulesTab({ modules }: ModulesTabProps) {
                     </h3>
 
                     {/* Module cards */}
-                    <div className={`space-y-2 ${isAnyLoopDriverExpanded ? 'flex-1 flex flex-col min-h-0' : ''}`}>
+                    <div className="space-y-2">
                         {modules.map(module => {
                             const config = MODULE_TYPE_CONFIG[module.type];
                             const hasDevices = module.type === 'loop-driver' &&
@@ -101,8 +97,7 @@ export default function ModulesTab({ modules }: ModulesTabProps) {
                             return (
                                 <div
                                     key={module.id}
-                                    className={`bg-slate-700/50 rounded-lg border border-slate-600/50 overflow-hidden flex-shrink-0 ${hasDevices && isExpanded ? 'flex-1 flex flex-col min-h-0' : ''
-                                        }`}
+                                    className="bg-slate-700/50 rounded-lg border border-slate-600/50 overflow-hidden"
                                 >
                                     {/* Module header - clickable for loop drivers */}
                                     <div
@@ -135,9 +130,11 @@ export default function ModulesTab({ modules }: ModulesTabProps) {
                                                     </span>
 
                                                     {/* Loop driver specific info */}
-                                                    {module.type === 'loop-driver' && module.connectedDeviceCount !== undefined && (
+                                                    {module.type === 'loop-driver' && (
                                                         <span className="text-xs text-slate-500">
-                                                            | {module.connectedDeviceCount} device{module.connectedDeviceCount !== 1 ? 's' : ''}
+                                                            | {module.connectedDevices !== undefined
+                                                                ? `${module.connectedDeviceCount} device${module.connectedDeviceCount !== 1 ? 's' : ''}`
+                                                                : 'Unknown'}
                                                         </span>
                                                     )}
                                                 </div>
@@ -160,19 +157,37 @@ export default function ModulesTab({ modules }: ModulesTabProps) {
 
                                     {/* Connected devices list for loop drivers (only when expanded) */}
                                     {hasDevices && isExpanded && (
-                                        <div className="border-t border-slate-600/30 bg-slate-800/30 flex-1 flex flex-col min-h-0 overflow-hidden">
-                                            <div className="px-3 py-2 flex flex-col flex-1 min-h-0">
-                                                <div className="flex text-[10px] uppercase tracking-wider text-slate-500 mb-1.5 gap-2 flex-shrink-0">
+                                        <div className="border-t border-slate-600/30 bg-slate-800/30">
+                                            <div className="px-3 py-2">
+                                                <div className="flex text-[10px] uppercase tracking-wider text-slate-500 mb-1.5 gap-2">
+                                                    <span className="w-10">Addr</span>
                                                     <span className="flex-1">Device</span>
                                                     <span className="w-24 text-right">Serial Number</span>
                                                 </div>
-                                                <div className="flex-1 overflow-y-auto space-y-1">
+                                                <div className="max-h-64 overflow-y-auto space-y-1">
                                                     {module.connectedDevices!.map(device => (
                                                         <div
                                                             key={device.instanceId}
                                                             className="flex items-center gap-2 text-xs hover:bg-slate-700/30 rounded px-1 py-0.5"
                                                         >
-                                                            <span className="w-2 h-2 rounded-full bg-cyan-500/50 flex-shrink-0" />
+                                                            {/* C_Address with discovery direction indicator */}
+                                                            <span className={`w-10 font-mono text-[10px] ${device.discoveredFrom === 'out'
+                                                                ? 'text-cyan-400'
+                                                                : device.discoveredFrom === 'in'
+                                                                    ? 'text-orange-400'
+                                                                    : 'text-slate-400'
+                                                                }`}>
+                                                                {device.cAddress !== undefined
+                                                                    ? device.cAddress
+                                                                    : '-'}
+                                                            </span>
+                                                            {/* Discovery direction dot */}
+                                                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${device.discoveredFrom === 'out'
+                                                                ? 'bg-cyan-500'
+                                                                : device.discoveredFrom === 'in'
+                                                                    ? 'bg-orange-500'
+                                                                    : 'bg-slate-500'
+                                                                }`} title={device.discoveredFrom === 'out' ? 'From LOOP-OUT' : device.discoveredFrom === 'in' ? 'From LOOP-IN' : ''} />
                                                             <span className="text-slate-300 truncate flex-1" title={device.label}>
                                                                 {device.label}
                                                             </span>

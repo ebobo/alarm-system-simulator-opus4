@@ -15,7 +15,9 @@ export interface ConnectedDeviceInfo {
     instanceId: string;
     label: string;
     typeId: string;
-    sn: number;           // Serial number for display
+    sn: number;                            // Serial number for display
+    cAddress?: number;                     // Communication address (1-255), assigned when discovered
+    discoveredFrom?: 'out' | 'in';         // Discovery direction (out=LOOP-OUT/blue, in=LOOP-IN/orange)
 }
 
 /**
@@ -59,7 +61,7 @@ export const MODULE_TYPE_CONFIG: Record<ModuleType, ModuleTypeConfig> = {
     },
     'loop-driver': {
         name: 'Loop Driver',
-        icon: '🔄',
-        colorClass: 'green'
+        icon: '📡',
+        colorClass: 'cyan'
     }
 };

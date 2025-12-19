@@ -151,20 +151,58 @@ function App() {
   // Panel power state (shared with PanelView via prop drilling)
   const [isPanelPoweredOn, setIsPanelPoweredOn] = useState(false);
 
+  // Discovery version - increments each time "Raise Loop" is clicked to trigger re-discovery
+  const [discoveryVersion, setDiscoveryVersion] = useState(0);
+
   // Panel sidebar tab state (persisted across view changes)
   const [panelSidebarTab, setPanelSidebarTab] = useState<'modules' | 'config'>('modules');
 
-  // Computed: panel modules derived from floor plan
-  const panelModules = useMemo(() =>
-    deriveModulesFromFloorPlan(placedDevices, connections),
-    [placedDevices, connections]
-  );
+  // Computed: panel modules derived from floor plan (discovery runs when powered on)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const panelModules = useMemo(() => {
+    // discoveryVersion is included to force re-computation when Raise Loop is clicked
+    void discoveryVersion;
+    return deriveModulesFromFloorPlan(placedDevices, connections, isPanelPoweredOn);
+  }, [placedDevices, connections, isPanelPoweredOn, discoveryVersion]);
 
   // Computed: device match result for panel
   const panelDeviceMatch = useMemo(() => {
     if (!loadedConfig || !isPanelPoweredOn) return null;
     return validateDeviceMatch(loadedConfig, placedDevices);
   }, [loadedConfig, placedDevices, isPanelPoweredOn]);
+
+  // Sync discovered cAddress back to PlacedDevice when loop is powered on
+  // This allows the property panel to display the assigned address
+  useEffect(() => {
+    if (!isPanelPoweredOn) {
+      // When powered off, clear all cAddress values
+      setPlacedDevices(prev => {
+        const needsUpdate = prev.some(d => d.cAddress !== null);
+        if (!needsUpdate) return prev;
+        return prev.map(d => ({ ...d, cAddress: null }));
+      });
+      return;
+    }
+
+    // When powered on, sync discovered addresses from modules to devices
+    const addressMap = new Map<string, number>();
+    for (const module of panelModules) {
+      if (module.type === 'loop-driver' && module.connectedDevices) {
+        for (const device of module.connectedDevices) {
+          if (device.cAddress !== undefined) {
+            addressMap.set(device.instanceId, device.cAddress);
+          }
+        }
+      }
+    }
+
+    if (addressMap.size > 0) {
+      setPlacedDevices(prev => prev.map(d => ({
+        ...d,
+        cAddress: addressMap.get(d.instanceId) ?? d.cAddress
+      })));
+    }
+  }, [isPanelPoweredOn, panelModules]);
 
   // Check if panel/loop driver exist
   const hasPanelDevice = placedDevices.some(d => d.typeId === 'panel');
@@ -884,7 +922,11 @@ function App() {
               loadedConfig={loadedConfig}
               importError={configImportError}
               isPoweredOn={isPanelPoweredOn}
-              onPowerChange={setIsPanelPoweredOn}
+              onPowerChange={(powered) => {
+                setIsPanelPoweredOn(powered);
+                // Increment discovery version to trigger re-discovery
+                setDiscoveryVersion(v => v + 1);
+              }}
               deviceMatch={panelDeviceMatch}
             />
           )}

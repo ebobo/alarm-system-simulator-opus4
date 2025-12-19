@@ -103,13 +103,6 @@ export default function PanelSidebar({
             ) : (
                 <ConfigTab config={config} matchResult={matchResult} isPoweredOn={isPoweredOn} />
             )}
-
-            {/* Footer */}
-            <div className="p-3 border-t border-slate-700">
-                <p className="text-xs text-slate-500 text-center">
-                    Panel Simulator
-                </p>
-            </div>
         </div>
     );
 }

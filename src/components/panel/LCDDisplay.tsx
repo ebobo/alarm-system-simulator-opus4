@@ -41,7 +41,7 @@ export default function LCDDisplay({ status, message, details, hint }: LCDDispla
 
     return (
         <div className="bg-slate-900 rounded-lg border-2 border-slate-600 p-4 font-mono">
-            <div className={`${colors.bg} rounded p-4 border ${colors.border}`}>
+            <div className={`${colors.bg} rounded p-4 border ${colors.border} min-h-[140px]`}>
                 <p className={`${colors.text} text-lg font-bold`}>{message}</p>
                 {details.map((detail, index) => (
                     <p key={index} className={`${colors.detail} text-sm mt-1`}>
