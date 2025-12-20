@@ -393,6 +393,8 @@ function DraggableDevice({
                                         e.stopPropagation();
                                         onWireStart?.(device.instanceId, terminal.id, e);
                                     }}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    onTouchStart={(e) => e.stopPropagation()}
                                     onPointerUp={(e) => {
                                         e.stopPropagation();
                                         onWireEnd?.(device.instanceId, terminal.id);
