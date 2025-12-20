@@ -18,6 +18,11 @@ interface PanelSidebarProps {
     onTabChange: (tab: TabType) => void;
     isCollapsed: boolean;
     onToggleCollapse: () => void;
+    // Config tab section collapse states
+    isConfigDevicesCollapsed: boolean;
+    onToggleConfigDevicesCollapsed: () => void;
+    isConfigZonesCollapsed: boolean;
+    onToggleConfigZonesCollapsed: () => void;
 }
 
 export default function PanelSidebar({
@@ -28,7 +33,11 @@ export default function PanelSidebar({
     activeTab,
     onTabChange,
     isCollapsed,
-    onToggleCollapse
+    onToggleCollapse,
+    isConfigDevicesCollapsed,
+    onToggleConfigDevicesCollapsed,
+    isConfigZonesCollapsed,
+    onToggleConfigZonesCollapsed
 }: PanelSidebarProps) {
 
     // Get status indicator color for header icon
@@ -162,7 +171,15 @@ export default function PanelSidebar({
             {activeTab === 'modules' ? (
                 <ModulesTab modules={modules} />
             ) : (
-                <ConfigTab config={config} matchResult={matchResult} isPoweredOn={isPoweredOn} />
+                <ConfigTab
+                    config={config}
+                    matchResult={matchResult}
+                    isPoweredOn={isPoweredOn}
+                    isDevicesCollapsed={isConfigDevicesCollapsed}
+                    onToggleDevicesCollapsed={onToggleConfigDevicesCollapsed}
+                    isZonesCollapsed={isConfigZonesCollapsed}
+                    onToggleZonesCollapsed={onToggleConfigZonesCollapsed}
+                />
             )}
         </div>
     );

@@ -161,6 +161,10 @@ function App() {
   const [isDevicePaletteCollapsed, setIsDevicePaletteCollapsed] = useState(false);
   const [isPanelSidebarCollapsed, setIsPanelSidebarCollapsed] = useState(false);
 
+  // Config tab section collapse states (persisted across tab switches)
+  const [isConfigDevicesCollapsed, setIsConfigDevicesCollapsed] = useState(false);
+  const [isConfigZonesCollapsed, setIsConfigZonesCollapsed] = useState(true); // Default collapsed
+
   // Store discovered devices in state - only updates when Raise Loop is clicked
   const [discoveredDevicesMap, setDiscoveredDevicesMap] = useState<Map<string, { cAddress: number; discoveredFrom: 'out' | 'in' }>>(new Map());
 
@@ -1009,6 +1013,10 @@ function App() {
               onTabChange={setPanelSidebarTab}
               isCollapsed={isPanelSidebarCollapsed}
               onToggleCollapse={() => setIsPanelSidebarCollapsed(prev => !prev)}
+              isConfigDevicesCollapsed={isConfigDevicesCollapsed}
+              onToggleConfigDevicesCollapsed={() => setIsConfigDevicesCollapsed(prev => !prev)}
+              isConfigZonesCollapsed={isConfigZonesCollapsed}
+              onToggleConfigZonesCollapsed={() => setIsConfigZonesCollapsed(prev => !prev)}
             />
           </div>
         )}
