@@ -15,7 +15,8 @@ export interface ConnectedDeviceInfo {
     instanceId: string;
     label: string;
     typeId: string;
-    sn: number;                            // Serial number for display
+    sn: number;                            // Serial number for display (socket SN for detectors)
+    headSn?: number;                       // Head serial number for AG-detectors
     cAddress?: number;                     // Communication address (1-255), assigned when discovered
     discoveredFrom?: 'out' | 'in';         // Discovery direction (out=LOOP-OUT/blue, in=LOOP-IN/orange)
 }

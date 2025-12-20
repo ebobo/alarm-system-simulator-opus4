@@ -71,8 +71,6 @@ export function countConnectedLoopDevices(
     // BFS from loop driver
     while (queue.length > 0) {
         const currentId = queue.shift()!;
-        if (visited.has(currentId)) continue;
-        visited.add(currentId);
 
         // Get all neighbors
         const neighbors = adjacency.get(currentId) || [];
@@ -81,6 +79,9 @@ export function countConnectedLoopDevices(
 
             // Skip panel - don't traverse through panel
             if (neighborId === panelId) continue;
+
+            // Mark as visited BEFORE adding to prevent duplicates from multiple connections
+            visited.add(neighborId);
 
             // Find the device
             const device = placedDevices.find(d => d.instanceId === neighborId);
@@ -165,11 +166,37 @@ export function deriveModulesFromFloorPlan(
                 const discoveryInfo = discoveredDevices.get(deviceId);
                 const device = placedDevices.find(d => d.instanceId === deviceId);
                 if (device && discoveryInfo) {
+                    // Determine the effective type - AG-socket with mounted head becomes AG-detector
+                    let effectiveTypeId = device.typeId;
+                    let headSn: number | undefined;
+
+                    if (device.typeId === 'AG-socket' && device.mountedDetectorId) {
+                        effectiveTypeId = 'AG-detector';
+                        // Find the mounted head to get its SN
+                        const mountedHead = placedDevices.find(d => d.instanceId === device.mountedDetectorId);
+                        if (mountedHead) {
+                            headSn = mountedHead.sn;
+                        }
+                    }
+
+                    // Get label - prefer head's label for detectors, fall back to socket label
+                    // Don't fall back to deviceType - let empty labels show as "-"
+                    let displayLabel = device.label || '';
+                    if (device.typeId === 'AG-socket' && device.mountedDetectorId) {
+                        const mountedHead = placedDevices.find(d => d.instanceId === device.mountedDetectorId);
+                        if (mountedHead?.label) {
+                            displayLabel = mountedHead.label;
+                        } else if (!displayLabel) {
+                            displayLabel = ''; // Will show as "-" in UI
+                        }
+                    }
+
                     connectedDevices.push({
                         instanceId: device.instanceId,
-                        label: device.label || device.deviceType,
-                        typeId: device.typeId,
+                        label: displayLabel,
+                        typeId: effectiveTypeId,
                         sn: device.sn,
+                        headSn,
                         cAddress: discoveryInfo.cAddress,
                         discoveredFrom: discoveryInfo.discoveredFrom
                     });
@@ -227,13 +254,14 @@ function getConnectedDeviceIds(
 
     while (queue.length > 0) {
         const currentId = queue.shift()!;
-        if (visited.has(currentId)) continue;
-        visited.add(currentId);
 
         const neighbors = adjacency.get(currentId) || [];
         for (const neighborId of neighbors) {
             if (visited.has(neighborId)) continue;
             if (neighborId === panelId) continue;
+
+            // Mark as visited BEFORE adding to prevent duplicates from multiple connections
+            visited.add(neighborId);
 
             const device = placedDevices.find(d => d.instanceId === neighborId);
             if (device) {

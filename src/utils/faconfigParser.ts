@@ -197,13 +197,19 @@ export interface DeviceMatchResult {
 
 /**
  * Map placed device typeId to config device type
- * Note: AG-socket (socket) is NOT the same as detector (socket + head)
- * The config type must match exactly with the placed device typeId
+ * Note: AG-socket (socket only) does NOT match 'detector' in config
+ * AG-detector (socket + head) DOES match 'detector' in config
  */
 function mapDeviceTypeIdToConfigType(typeId: string): string {
-    // Return the typeId as-is - no mapping needed
-    // Config should use the same type names: AG-socket, mcp, sounder, etc.
-    return typeId;
+    // Map our internal type names to config type names
+    switch (typeId) {
+        case 'AG-detector':
+            return 'detector'; // Mounted socket+head matches config "detector"
+        case 'AG-socket':
+            return 'AG-socket'; // Standalone socket doesn't match anything in standard config
+        default:
+            return typeId; // mcp, sounder, etc. match directly
+    }
 }
 
 /**
@@ -221,10 +227,26 @@ export function validateDeviceMatch(
     }
 
     // Build a map of placed devices by address (label)
+    // Special handling for AG-head: if labeled, find the parent socket since socket is the actual loop device
     const placedDeviceMap = new Map<string, PlacedDevice>();
     for (const device of placedDevices) {
         // Skip non-loop devices (panel, loop-driver)
         if (device.typeId === 'panel' || device.typeId === 'loop-driver') {
+            continue;
+        }
+        // Skip AG-head - we'll handle it via the socket
+        if (device.typeId === 'AG-head') {
+            // If this head has a label, find the socket it's mounted on
+            if (device.label && /^[A-Z]\.\d{3}\.\d{3}$/.test(device.label)) {
+                // Find the socket that has this head mounted
+                const parentSocket = placedDevices.find(d =>
+                    d.typeId === 'AG-socket' && d.mountedDetectorId === device.instanceId
+                );
+                if (parentSocket) {
+                    // Use the socket but with the head's label for matching
+                    placedDeviceMap.set(device.label, parentSocket);
+                }
+            }
             continue;
         }
         // Use the device's label if it looks like an address
@@ -246,8 +268,14 @@ export function validateDeviceMatch(
             // Device address not found in placed devices
             missing.push(addr);
         } else {
-            // Store the placed device typeId
-            const placedType = mapDeviceTypeIdToConfigType(placedDevice.typeId);
+            // Determine effective type - AG-socket with mounted head becomes AG-detector
+            let effectiveTypeId = placedDevice.typeId;
+            if (placedDevice.typeId === 'AG-socket' && placedDevice.mountedDetectorId) {
+                effectiveTypeId = 'AG-detector';
+            }
+
+            // Map to config type and store
+            const placedType = mapDeviceTypeIdToConfigType(effectiveTypeId);
             placedTypes.set(addr, placedType);
 
             // Check if type matches

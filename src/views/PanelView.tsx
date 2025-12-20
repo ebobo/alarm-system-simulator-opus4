@@ -18,6 +18,8 @@ interface PanelViewProps {
     isPoweredOn: boolean;
     onPowerChange: (powered: boolean) => void;
     deviceMatch: DeviceMatchResult | null;
+    discoveredDeviceCount: number;
+    hasLoopBreak: boolean;
 }
 
 export default function PanelView({
@@ -28,7 +30,9 @@ export default function PanelView({
     importError,
     isPoweredOn,
     onPowerChange,
-    deviceMatch
+    deviceMatch,
+    discoveredDeviceCount,
+    hasLoopBreak
 }: PanelViewProps) {
 
     // Check if panel and loop driver exist
@@ -135,24 +139,32 @@ export default function PanelView({
             if (typeMismatchCount > 0) {
                 details.push(`Type mismatch: ${typeMismatchCount} device${typeMismatchCount !== 1 ? 's' : ''}`);
             }
+            details.push(`Loop 1: ${discoveredDeviceCount} discovered`);
+            if (hasLoopBreak) {
+                details.push('⚠ LOOP BREAK DETECTED');
+            }
             details.push('Check Config Status panel →');
             return {
                 status: 'fault' as const,
                 message: 'DEVICE MISMATCH',
                 details,
-                hint: 'Fix device types or add missing devices',
+                hint: hasLoopBreak ? 'Loop is not closed - check wiring' : 'Fix device types or add missing devices',
             };
         }
 
-        // All good - system running
+        // All good or just loop break - system running
+        const systemDetails = [
+            `${deviceMatch?.matched.length || 0} devices online`,
+            `${configSummary!.ceRules} C&E rules active`,
+        ];
+        if (hasLoopBreak) {
+            systemDetails.push('⚠ LOOP BREAK DETECTED');
+        }
         return {
-            status: 'normal' as const,
-            message: 'SYSTEM RUNNING',
-            details: [
-                `${deviceMatch?.matched.length || 0} devices online`,
-                `${configSummary!.ceRules} C&E rules active`,
-            ],
-            hint: 'System monitoring active',
+            status: hasLoopBreak ? 'fault' as const : 'normal' as const,
+            message: hasLoopBreak ? 'LOOP FAULT' : 'SYSTEM RUNNING',
+            details: systemDetails,
+            hint: hasLoopBreak ? 'Loop is not closed - check wiring' : 'System monitoring active',
         };
     };
 

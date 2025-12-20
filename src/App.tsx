@@ -1176,6 +1176,8 @@ function App() {
                 setTimeout(() => setSaveNotification(null), 2000);
               }}
               deviceMatch={panelDeviceMatch}
+              discoveredDeviceCount={discoveredDevicesMap.size}
+              hasLoopBreak={Array.from(discoveredDevicesMap.values()).some(d => d.discoveredFrom === 'in')}
             />
           )}
         </div>
@@ -1249,7 +1251,7 @@ function App() {
 
         {/* Right Sidebar - Panel Status (only show in panel view) */}
         {activeView === 'panel' && (
-          <div className={`${isPanelSidebarCollapsed ? 'w-12' : 'w-96'} flex flex-col bg-gradient-to-b from-slate-800 to-slate-900 border-l border-slate-700 transition-all duration-200`}>
+          <div className={`${isPanelSidebarCollapsed ? 'w-12' : 'w-[394px]'} flex flex-col bg-gradient-to-b from-slate-800 to-slate-900 border-l border-slate-700 transition-all duration-200`}>
             <PanelSidebar
               config={loadedConfig}
               matchResult={panelDeviceMatch}

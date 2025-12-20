@@ -10,11 +10,11 @@ interface ModulesTabProps {
 }
 
 export default function ModulesTab({ modules }: ModulesTabProps) {
-    // Track which loop driver cards are expanded (by module id)
-    const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
+    // Track which loop driver cards are collapsed (by module id) - default to expanded
+    const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
 
     const toggleExpanded = (moduleId: string) => {
-        setExpandedModules(prev => {
+        setCollapsedModules(prev => {
             const next = new Set(prev);
             if (next.has(moduleId)) {
                 next.delete(moduleId);
@@ -92,7 +92,7 @@ export default function ModulesTab({ modules }: ModulesTabProps) {
                             const config = MODULE_TYPE_CONFIG[module.type];
                             const hasDevices = module.type === 'loop-driver' &&
                                 module.connectedDevices && module.connectedDevices.length > 0;
-                            const isExpanded = expandedModules.has(module.id);
+                            const isExpanded = !collapsedModules.has(module.id);
 
                             return (
                                 <div
@@ -159,43 +159,55 @@ export default function ModulesTab({ modules }: ModulesTabProps) {
                                     {hasDevices && isExpanded && (
                                         <div className="border-t border-slate-600/30 bg-slate-800/30">
                                             <div className="px-3 py-2">
-                                                <div className="flex text-[10px] uppercase tracking-wider text-slate-500 mb-1.5 gap-2">
-                                                    <span className="w-10">Addr</span>
-                                                    <span className="flex-1">Device</span>
-                                                    <span className="w-24 text-right">Serial Number</span>
+                                                <div className="flex text-[10px] uppercase tracking-wider text-slate-500 mb-1.5 gap-1">
+                                                    <span className="w-8">Addr</span>
+                                                    <span className="w-20">Label</span>
+                                                    <span className="w-20">Type</span>
+                                                    <span className="flex-1 text-right">Serial Number</span>
                                                 </div>
-                                                <div className="max-h-64 overflow-y-auto space-y-1">
-                                                    {module.connectedDevices!.map(device => (
-                                                        <div
-                                                            key={device.instanceId}
-                                                            className="flex items-center gap-2 text-xs hover:bg-slate-700/30 rounded px-1 py-0.5"
-                                                        >
-                                                            {/* C_Address with discovery direction indicator */}
-                                                            <span className={`w-10 font-mono text-[10px] ${device.discoveredFrom === 'out'
-                                                                ? 'text-cyan-400'
-                                                                : device.discoveredFrom === 'in'
-                                                                    ? 'text-orange-400'
-                                                                    : 'text-slate-400'
-                                                                }`}>
-                                                                {device.cAddress !== undefined
-                                                                    ? device.cAddress
-                                                                    : '-'}
-                                                            </span>
-                                                            {/* Discovery direction dot */}
-                                                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${device.discoveredFrom === 'out'
-                                                                ? 'bg-cyan-500'
-                                                                : device.discoveredFrom === 'in'
-                                                                    ? 'bg-orange-500'
-                                                                    : 'bg-slate-500'
-                                                                }`} title={device.discoveredFrom === 'out' ? 'From LOOP-OUT' : device.discoveredFrom === 'in' ? 'From LOOP-IN' : ''} />
-                                                            <span className="text-slate-300 truncate flex-1" title={device.label}>
-                                                                {device.label}
-                                                            </span>
-                                                            <span className="text-slate-500 font-mono text-[10px] w-24 text-right flex-shrink-0">
-                                                                {device.sn.toString(16).toUpperCase().padStart(12, '0')}
-                                                            </span>
-                                                        </div>
-                                                    ))}
+                                                <div className="space-y-1">
+                                                    {module.connectedDevices!.map(device => {
+                                                        // Format SN - show both for AG-detector (12 hex chars = 48 bits)
+                                                        const formatSN = (sn: number) => sn.toString(16).toUpperCase().padStart(12, '0');
+                                                        const snDisplay = device.typeId === 'AG-detector' && device.headSn
+                                                            ? `${formatSN(device.sn)}/${formatSN(device.headSn)}`
+                                                            : formatSN(device.sn);
+
+                                                        return (
+                                                            <div
+                                                                key={device.instanceId}
+                                                                className="flex items-center gap-1 text-xs hover:bg-slate-700/30 rounded px-1 py-0.5"
+                                                            >
+                                                                {/* C_Address with discovery direction indicator */}
+                                                                <span className={`w-8 font-mono text-[10px] ${device.discoveredFrom === 'out'
+                                                                    ? 'text-cyan-400'
+                                                                    : device.discoveredFrom === 'in'
+                                                                        ? 'text-orange-400'
+                                                                        : 'text-slate-400'
+                                                                    }`}>
+                                                                    {device.cAddress !== undefined
+                                                                        ? device.cAddress
+                                                                        : '-'}
+                                                                </span>
+                                                                {/* Label */}
+                                                                <span className="w-20 text-slate-300 truncate text-[10px]" title={device.label}>
+                                                                    {device.label || '-'}
+                                                                </span>
+                                                                {/* Type with color indicator */}
+                                                                <span className={`w-20 truncate text-[10px] ${device.typeId === 'AG-detector' ? 'text-blue-400' :
+                                                                    device.typeId === 'mcp' ? 'text-red-400' :
+                                                                        device.typeId === 'sounder' ? 'text-orange-400' :
+                                                                            'text-slate-400'
+                                                                    }`} title={device.typeId}>
+                                                                    {device.typeId}
+                                                                </span>
+                                                                {/* Serial Number */}
+                                                                <span className="text-slate-500 font-mono text-[9px] flex-1 text-right" title={snDisplay}>
+                                                                    {snDisplay}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
                                         </div>

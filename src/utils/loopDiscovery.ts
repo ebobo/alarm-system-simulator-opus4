@@ -136,12 +136,14 @@ export function discoverLoopDevices(
 
     for (const device of outDevices) {
         const reportDevice = getDeviceToReport(device);
+        // Use the original device's instanceId (socket for mounted detectors)
+        // but report properties from the head/detector for display
         discovered.push({
-            instanceId: reportDevice.instanceId,
+            instanceId: device.instanceId,  // Always use socket ID for lookup
             cAddress: addressCounter++,
             discoveredFrom: 'out',
-            label: reportDevice.label || reportDevice.deviceType,
-            typeId: reportDevice.typeId === 'AG-head' ? 'AG-detector' : reportDevice.typeId,
+            label: reportDevice.label || device.label || reportDevice.deviceType,
+            typeId: device.typeId === 'AG-socket' && device.mountedDetectorId ? 'AG-detector' : device.typeId,
             sn: reportDevice.sn
         });
         discoveredIds.add(device.instanceId); // Track original socket ID to avoid re-discovery
@@ -166,12 +168,14 @@ export function discoverLoopDevices(
     for (const device of inDevices.reverse()) {
         if (!discoveredIds.has(device.instanceId)) {
             const reportDevice = getDeviceToReport(device);
+            // Use the original device's instanceId (socket for mounted detectors)
+            // but report properties from the head/detector for display
             discovered.push({
-                instanceId: reportDevice.instanceId,
+                instanceId: device.instanceId,  // Always use socket ID for lookup
                 cAddress: addressCounter++,
                 discoveredFrom: 'in',
-                label: reportDevice.label || reportDevice.deviceType,
-                typeId: reportDevice.typeId === 'AG-head' ? 'AG-detector' : reportDevice.typeId,
+                label: reportDevice.label || device.label || reportDevice.deviceType,
+                typeId: device.typeId === 'AG-socket' && device.mountedDetectorId ? 'AG-detector' : device.typeId,
                 sn: reportDevice.sn
             });
             discoveredIds.add(device.instanceId);
