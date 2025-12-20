@@ -4,12 +4,12 @@ import { DndContext, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensor
 import type { DragEndEvent, DragStartEvent, DragMoveEvent } from '@dnd-kit/core';
 import FloorPlanViewer from './components/FloorPlanViewer';
 import Sidebar from './components/Sidebar';
-import DevicePalette from './components/DevicePalette';
 import ConfigModal from './components/ConfigModal';
 import SaveNameDialog from './components/SaveNameDialog';
 import ViewTabs from './components/ViewTabs';
 import PanelView from './views/PanelView';
-import PanelSidebar from './components/panel/PanelSidebar';
+import UnifiedSidebar from './components/UnifiedSidebar';
+import type { UnifiedSidebarTab } from './components/UnifiedSidebar';
 import { generateFloorPlan, defaultConfig } from './utils/floorPlanGenerator';
 import { useCoordinates } from './hooks/useCoordinates';
 import { generateInstanceId, generateSerialNumber, getDeviceType } from './types/devices';
@@ -172,13 +172,12 @@ function App() {
   // Discovery version - increments each time "Raise Loop" is clicked to trigger re-discovery
   const [discoveryVersion, setDiscoveryVersion] = useState(0);
 
-  // Panel sidebar tab state (persisted across view changes)
-  const [panelSidebarTab, setPanelSidebarTab] = useState<'modules' | 'config'>('modules');
+  // Unified sidebar tab state (persisted across view changes)
+  const [unifiedSidebarTab, setUnifiedSidebarTab] = useState<UnifiedSidebarTab>('devices');
 
   // Sidebar collapse states
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isDevicePaletteCollapsed, setIsDevicePaletteCollapsed] = useState(false);
-  const [isPanelSidebarCollapsed, setIsPanelSidebarCollapsed] = useState(false);
+  const [isUnifiedSidebarCollapsed, setIsUnifiedSidebarCollapsed] = useState(false);
 
   // Config tab section collapse states (persisted across tab switches)
   const [isConfigDevicesCollapsed, setIsConfigDevicesCollapsed] = useState(false);
@@ -1077,7 +1076,13 @@ function App() {
             <div className="flex items-center gap-4">
               <ViewTabs
                 activeView={activeView}
-                onViewChange={setActiveView}
+                onViewChange={(view) => {
+                  setActiveView(view);
+                  // Auto-switch to panel-status tab when entering panel view while on devices tab
+                  if (view === 'panel' && unifiedSidebarTab === 'devices') {
+                    setUnifiedSidebarTab('panel-status');
+                  }
+                }}
                 isPanelEnabled={isPanelEnabled}
                 panelDisabledReason={panelDisabledReason}
               />
@@ -1182,85 +1187,19 @@ function App() {
           )}
         </div>
 
-        {/* Right Sidebar - Device Palette and Property Panel (only show in floor plan view) */}
-        {activeView === 'floorplan' && (
-          <div className={`${isDevicePaletteCollapsed ? 'w-12' : 'w-80'} flex flex-col bg-gradient-to-b from-slate-800 to-slate-900 border-l border-slate-700 transition-all duration-200`}>
-            <div className="flex-1 overflow-hidden">
-              <DevicePalette
-                isCollapsed={isDevicePaletteCollapsed}
-                onToggleCollapse={() => setIsDevicePaletteCollapsed(prev => !prev)}
-              />
-            </div>
-            {!isDevicePaletteCollapsed && (
-              <DevicePropertyPanel
-                selectedDevice={placedDevices.find(d => d.instanceId === selectedDeviceId) || null}
-                allDevices={placedDevices}
-                selectedWire={connections.find(c => c.id === selectedWireId) || null}
-                selectedRoom={selectedRoom}
-                floorPlanInfo={{
-                  name: currentProjectName,
-                  rooms: { offices: config.offices, meetingRooms: config.meetingRooms, toilets: config.toilets },
-                  deviceCount: placedDevices.length,
-                  wireCount: connections.length,
-                }}
-                onUpdateDevice={handleUpdateDevice}
-                onDeleteWire={(wireId) => {
-                  setConnections(prev => prev.filter(c => c.id !== wireId));
-                  setSelectedWireId(null);
-                }}
-                onDeleteDevice={(deviceId) => {
-                  // Remove all connections to/from this device
-                  setConnections(prev => prev.filter(c =>
-                    c.fromDeviceId !== deviceId && c.toDeviceId !== deviceId
-                  ));
-                  // Remove the device
-                  setPlacedDevices(prev => prev.filter(d => d.instanceId !== deviceId));
-                  setSelectedDeviceId(null);
-                }}
-                onRemoveDetector={(detectorId, socketId) => {
-                  // Find the socket to get its position
-                  const socket = placedDevices.find(d => d.instanceId === socketId);
-                  if (!socket) return;
-
-                  // Update devices: clear mountedDetectorId from socket, move detector next to socket
-                  setPlacedDevices(prev => prev.map(dev => {
-                    if (dev.instanceId === socketId) {
-                      // Clear mounted detector reference from socket
-                      return { ...dev, mountedDetectorId: undefined };
-                    }
-                    if (dev.instanceId === detectorId) {
-                      // Move detector next to socket (e.g. +40px x)
-                      return {
-                        ...dev,
-                        x: socket.x + 40,
-                        y: socket.y,
-                        mountedOnSocketId: undefined,
-                        deviceType: 'AG Head' // Revert to AG Head
-                      };
-                    }
-                    return dev;
-                  }));
-
-                  // Keep the detector selected
-                  setSelectedDeviceId(detectorId);
-                }}
-              />
-            )}
-          </div>
-        )}
-
-        {/* Right Sidebar - Panel Status (only show in panel view) */}
-        {activeView === 'panel' && (
-          <div className={`${isPanelSidebarCollapsed ? 'w-12' : 'w-[394px]'} flex flex-col bg-gradient-to-b from-slate-800 to-slate-900 border-l border-slate-700 transition-all duration-200`}>
-            <PanelSidebar
+        {/* Right Sidebar - Unified Control Panel and Property Panel */}
+        <div className={`${isUnifiedSidebarCollapsed ? 'w-12' : 'w-[395px]'} flex flex-col bg-gradient-to-b from-slate-800 to-slate-900 border-l border-slate-700 transition-all duration-200`}>
+          <div className="flex-1 overflow-hidden">
+            <UnifiedSidebar
+              activeView={activeView}
+              activeTab={unifiedSidebarTab}
+              onTabChange={setUnifiedSidebarTab}
+              isCollapsed={isUnifiedSidebarCollapsed}
+              onToggleCollapse={() => setIsUnifiedSidebarCollapsed(prev => !prev)}
+              modules={panelModules}
               config={loadedConfig}
               matchResult={panelDeviceMatch}
               isPoweredOn={isPanelPoweredOn}
-              modules={panelModules}
-              activeTab={panelSidebarTab}
-              onTabChange={setPanelSidebarTab}
-              isCollapsed={isPanelSidebarCollapsed}
-              onToggleCollapse={() => setIsPanelSidebarCollapsed(prev => !prev)}
               isConfigDevicesCollapsed={isConfigDevicesCollapsed}
               onToggleConfigDevicesCollapsed={() => setIsConfigDevicesCollapsed(prev => !prev)}
               isConfigZonesCollapsed={isConfigZonesCollapsed}
@@ -1268,7 +1207,62 @@ function App() {
               floorPlanProjectName={currentProjectName}
             />
           </div>
-        )}
+          {!isUnifiedSidebarCollapsed && unifiedSidebarTab === 'devices' && (
+            <DevicePropertyPanel
+              selectedDevice={placedDevices.find(d => d.instanceId === selectedDeviceId) || null}
+              allDevices={placedDevices}
+              selectedWire={connections.find(c => c.id === selectedWireId) || null}
+              selectedRoom={selectedRoom}
+              floorPlanInfo={{
+                name: currentProjectName,
+                rooms: { offices: config.offices, meetingRooms: config.meetingRooms, toilets: config.toilets },
+                deviceCount: placedDevices.length,
+                wireCount: connections.length,
+              }}
+              onUpdateDevice={handleUpdateDevice}
+              onDeleteWire={(wireId) => {
+                setConnections(prev => prev.filter(c => c.id !== wireId));
+                setSelectedWireId(null);
+              }}
+              onDeleteDevice={(deviceId) => {
+                // Remove all connections to/from this device
+                setConnections(prev => prev.filter(c =>
+                  c.fromDeviceId !== deviceId && c.toDeviceId !== deviceId
+                ));
+                // Remove the device
+                setPlacedDevices(prev => prev.filter(d => d.instanceId !== deviceId));
+                setSelectedDeviceId(null);
+              }}
+              onRemoveDetector={(detectorId, socketId) => {
+                // Find the socket to get its position
+                const socket = placedDevices.find(d => d.instanceId === socketId);
+                if (!socket) return;
+
+                // Update devices: clear mountedDetectorId from socket, move detector next to socket
+                setPlacedDevices(prev => prev.map(dev => {
+                  if (dev.instanceId === socketId) {
+                    // Clear mounted detector reference from socket
+                    return { ...dev, mountedDetectorId: undefined };
+                  }
+                  if (dev.instanceId === detectorId) {
+                    // Move detector next to socket (e.g. +40px x)
+                    return {
+                      ...dev,
+                      x: socket.x + 40,
+                      y: socket.y,
+                      mountedOnSocketId: undefined,
+                      deviceType: 'AG Head' // Revert to AG Head
+                    };
+                  }
+                  return dev;
+                }));
+
+                // Keep the detector selected
+                setSelectedDeviceId(detectorId);
+              }}
+            />
+          )}
+        </div>
 
         {/* Config Modal */}
         <ConfigModal
