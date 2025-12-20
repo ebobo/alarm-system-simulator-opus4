@@ -158,6 +158,7 @@ function App() {
   const [panelSidebarTab, setPanelSidebarTab] = useState<'modules' | 'config'>('modules');
 
   // Sidebar collapse states
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isDevicePaletteCollapsed, setIsDevicePaletteCollapsed] = useState(false);
   const [isPanelSidebarCollapsed, setIsPanelSidebarCollapsed] = useState(false);
 
@@ -845,6 +846,8 @@ function App() {
           onSelectProject={handleSelectProject}
           activeView={activeView}
           onImportConfig={() => configInputRef.current?.click()}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
         />
 
         {/* Hidden file input for config import */}
