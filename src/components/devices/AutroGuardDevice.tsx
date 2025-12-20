@@ -18,7 +18,7 @@ export default function AutroGuardDevice({
     selected = false,
     onTerminalClick
 }: AutroGuardDeviceProps) {
-    const deviceType = getDeviceType('autroguard-base');
+    const deviceType = getDeviceType('AG-socket');
     if (!deviceType) return null;
 
     const { width, height, terminals } = deviceType;

@@ -134,11 +134,11 @@ const PANEL_TERMINALS: TerminalDefinition[] = [
  * Registry of all available device types
  */
 export const DEVICE_TYPES: Record<string, DeviceType> = {
-    'autroguard-base': {
-        id: 'autroguard-base',
-        name: 'AG Base',
+    'AG-socket': {
+        id: 'AG-socket',
+        name: 'AG Socket',
         category: 'detector',
-        description: 'V-430 detector base with 4 wire pairs',
+        description: 'V-430 detector socket with 4 wire pairs',
         width: 40,
         height: 40,
         terminals: AUTROGUARD_TERMINALS,

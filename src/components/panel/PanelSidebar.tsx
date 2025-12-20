@@ -23,6 +23,7 @@ interface PanelSidebarProps {
     onToggleConfigDevicesCollapsed: () => void;
     isConfigZonesCollapsed: boolean;
     onToggleConfigZonesCollapsed: () => void;
+    floorPlanProjectName?: string;
 }
 
 export default function PanelSidebar({
@@ -37,7 +38,8 @@ export default function PanelSidebar({
     isConfigDevicesCollapsed,
     onToggleConfigDevicesCollapsed,
     isConfigZonesCollapsed,
-    onToggleConfigZonesCollapsed
+    onToggleConfigZonesCollapsed,
+    floorPlanProjectName
 }: PanelSidebarProps) {
 
     // Get status indicator color for header icon
@@ -179,6 +181,7 @@ export default function PanelSidebar({
                     onToggleDevicesCollapsed={onToggleConfigDevicesCollapsed}
                     isZonesCollapsed={isConfigZonesCollapsed}
                     onToggleZonesCollapsed={onToggleConfigZonesCollapsed}
+                    floorPlanProjectName={floorPlanProjectName}
                 />
             )}
         </div>

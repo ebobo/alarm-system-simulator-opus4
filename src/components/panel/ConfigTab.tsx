@@ -13,6 +13,7 @@ interface ConfigTabProps {
     onToggleDevicesCollapsed: () => void;
     isZonesCollapsed: boolean;
     onToggleZonesCollapsed: () => void;
+    floorPlanProjectName?: string;
 }
 
 export default function ConfigTab({
@@ -22,10 +23,16 @@ export default function ConfigTab({
     isDevicesCollapsed,
     onToggleDevicesCollapsed,
     isZonesCollapsed,
-    onToggleZonesCollapsed
+    onToggleZonesCollapsed,
+    floorPlanProjectName
 }: ConfigTabProps) {
     // Config summary
     const summary = config ? getConfigSummary(config) : null;
+
+    // Check if project names match
+    const isProjectNameMismatch = config && floorPlanProjectName &&
+        floorPlanProjectName !== 'Generated Plan' &&
+        floorPlanProjectName !== config.projectName;
 
     return (
         <div className="flex-1 flex flex-col p-3 overflow-hidden">
@@ -51,11 +58,19 @@ export default function ConfigTab({
                         <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
                             Project
                         </h3>
-                        <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600/50 mb-4">
+                        <div className={`rounded-lg p-3 border mb-4 ${isProjectNameMismatch
+                            ? 'bg-amber-900/30 border-amber-600/50'
+                            : 'bg-slate-700/50 border-slate-600/50'}`}>
                             <p className="text-sm font-medium text-white truncate">{config.projectName}</p>
                             <p className="text-xs text-slate-400 mt-1">
                                 Created {new Date(config.createdAt).toLocaleDateString()}
                             </p>
+                            {isProjectNameMismatch && (
+                                <p className="text-xs text-amber-400 mt-2 flex items-center gap-1">
+                                    <span>⚠</span>
+                                    <span>Floor plan: {floorPlanProjectName}</span>
+                                </p>
+                            )}
                         </div>
 
                         {/* Devices Section - Collapsible */}
@@ -181,32 +196,65 @@ export default function ConfigTab({
                                     <span className="text-sm text-slate-300">Matched</span>
                                     <span className="text-sm text-green-400 font-medium ml-auto">{matchResult.matched.length}</span>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className={`flex items-center gap-2 ${matchResult.typeMismatch && matchResult.typeMismatch.length > 0 ? 'mb-2' : ''}`}>
                                     <span className="text-red-400">✗</span>
                                     <span className="text-sm text-slate-300">Missing</span>
                                     <span className="text-sm text-red-400 font-medium ml-auto">{matchResult.missing.length}</span>
                                 </div>
+                                {matchResult.typeMismatch && matchResult.typeMismatch.length > 0 && (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-amber-400">⚠</span>
+                                        <span className="text-sm text-slate-300">Wrong Type</span>
+                                        <span className="text-sm text-amber-400 font-medium ml-auto">{matchResult.typeMismatch.length}</span>
+                                    </div>
+                                )}
                             </div>
 
-                            {/* All devices list - matched and missing */}
-                            {(matchResult.matched.length > 0 || matchResult.missing.length > 0) && (
+                            {/* All devices list - matched, type mismatch, and missing */}
+                            {(matchResult.matched.length > 0 || matchResult.missing.length > 0 || (matchResult.typeMismatch && matchResult.typeMismatch.length > 0)) && (
                                 <div className="flex-1 bg-slate-900/50 rounded-lg p-2 overflow-y-auto min-h-0">
                                     <div className="flex text-xs text-slate-500 mb-2 px-1">
-                                        <span className="w-6">St</span>
+                                        <span className="w-5">St</span>
                                         <span className="w-20">Address</span>
-                                        <span className="w-16">Type</span>
+                                        <span className="w-32">Type (wanted/actual)</span>
                                         <span className="flex-1">Location</span>
                                     </div>
                                     {/* Matched devices */}
                                     {matchResult.matched.map(addr => {
                                         const device = config.devices.find(d => d.address === addr);
                                         const location = device?.location || '—';
-                                        const type = device?.type || '—';
+                                        const wantedType = device?.type || '—';
+                                        const actualType = matchResult.placedTypes?.get(addr) || '—';
                                         return (
                                             <div key={addr} className="flex text-xs py-0.5 px-1 hover:bg-slate-800/50 rounded">
-                                                <span className="w-6 text-green-400">✓</span>
+                                                <span className="w-5 text-green-400">✓</span>
                                                 <span className="w-20 text-green-300 font-mono">{addr}</span>
-                                                <span className="w-16 text-slate-400 capitalize">{type}</span>
+                                                <span className="w-32 truncate" title={`${wantedType}/${actualType}`}>
+                                                    <span className="text-slate-400">{wantedType}</span>
+                                                    <span className="text-slate-600">/</span>
+                                                    <span className="text-green-400">{actualType}</span>
+                                                </span>
+                                                <span className="flex-1 text-slate-400 truncate" title={location}>
+                                                    {location}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                    {/* Type mismatch devices */}
+                                    {matchResult.typeMismatch && matchResult.typeMismatch.map(addr => {
+                                        const device = config.devices.find(d => d.address === addr);
+                                        const location = device?.location || '—';
+                                        const wantedType = device?.type || '—';
+                                        const actualType = matchResult.placedTypes?.get(addr) || '—';
+                                        return (
+                                            <div key={addr} className="flex text-xs py-0.5 px-1 hover:bg-slate-800/50 rounded">
+                                                <span className="w-5 text-amber-400">⚠</span>
+                                                <span className="w-20 text-amber-300 font-mono">{addr}</span>
+                                                <span className="w-32 truncate" title={`${wantedType}/${actualType}`}>
+                                                    <span className="text-slate-400">{wantedType}</span>
+                                                    <span className="text-slate-600">/</span>
+                                                    <span className="text-amber-400">{actualType}</span>
+                                                </span>
                                                 <span className="flex-1 text-slate-400 truncate" title={location}>
                                                     {location}
                                                 </span>
@@ -217,12 +265,16 @@ export default function ConfigTab({
                                     {matchResult.missing.map(addr => {
                                         const device = config.devices.find(d => d.address === addr);
                                         const location = device?.location || '—';
-                                        const type = device?.type || '—';
+                                        const wantedType = device?.type || '—';
                                         return (
                                             <div key={addr} className="flex text-xs py-0.5 px-1 hover:bg-slate-800/50 rounded">
-                                                <span className="w-6 text-red-400">✗</span>
+                                                <span className="w-5 text-red-400">✗</span>
                                                 <span className="w-20 text-red-300 font-mono">{addr}</span>
-                                                <span className="w-16 text-slate-400 capitalize">{type}</span>
+                                                <span className="w-32 truncate" title={`${wantedType}/—`}>
+                                                    <span className="text-slate-400">{wantedType}</span>
+                                                    <span className="text-slate-600">/</span>
+                                                    <span className="text-red-400">—</span>
+                                                </span>
                                                 <span className="flex-1 text-slate-400 truncate" title={location}>
                                                     {location}
                                                 </span>

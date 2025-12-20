@@ -629,7 +629,7 @@ function App() {
       // Determine the device type label based on category
       const getDeviceTypeLabel = () => {
         if (deviceTypeId === 'loop-driver') return 'BSD-1000';
-        if (deviceTypeId === 'autroguard-base') return 'AG socket';
+        if (deviceTypeId === 'AG-socket') return 'AG-socket';
         return deviceType.name;
       };
 
@@ -956,6 +956,9 @@ function App() {
                 setIsPanelPoweredOn(powered);
                 // Increment discovery version to trigger re-discovery
                 setDiscoveryVersion(v => v + 1);
+                // Show notification
+                setSaveNotification('Loop raised!');
+                setTimeout(() => setSaveNotification(null), 2000);
               }}
               deviceMatch={panelDeviceMatch}
             />
@@ -1003,7 +1006,7 @@ function App() {
 
         {/* Right Sidebar - Panel Status (only show in panel view) */}
         {activeView === 'panel' && (
-          <div className={`${isPanelSidebarCollapsed ? 'w-12' : 'w-80'} flex flex-col bg-gradient-to-b from-slate-800 to-slate-900 border-l border-slate-700 transition-all duration-200`}>
+          <div className={`${isPanelSidebarCollapsed ? 'w-12' : 'w-96'} flex flex-col bg-gradient-to-b from-slate-800 to-slate-900 border-l border-slate-700 transition-all duration-200`}>
             <PanelSidebar
               config={loadedConfig}
               matchResult={panelDeviceMatch}
@@ -1017,6 +1020,7 @@ function App() {
               onToggleConfigDevicesCollapsed={() => setIsConfigDevicesCollapsed(prev => !prev)}
               isConfigZonesCollapsed={isConfigZonesCollapsed}
               onToggleConfigZonesCollapsed={() => setIsConfigZonesCollapsed(prev => !prev)}
+              floorPlanProjectName={currentProjectName}
             />
           </div>
         )}

@@ -103,28 +103,44 @@ export default function PanelView({
 
         // Config loaded but not powered on
         if (!isPoweredOn) {
+            // Check if project names match
+            const configProjectName = loadedConfig.projectName;
+            const isNameMismatch = projectName !== configProjectName && projectName !== 'Generated Plan';
+
+            const details = [
+                `Project: ${configProjectName}`,
+                `Devices: ${configSummary!.totalDevices} (${configSummary!.detectors} det, ${configSummary!.mcps} mcp, ${configSummary!.sounders} snd)`,
+            ];
+
+            if (isNameMismatch) {
+                details.push(`⚠ Config does not match: ${projectName}`);
+            }
+
             return {
-                status: 'normal' as const,
-                message: 'CONFIG LOADED',
-                details: [
-                    `Project: ${loadedConfig.projectName}`,
-                    `Devices: ${configSummary!.totalDevices} (${configSummary!.detectors} det, ${configSummary!.mcps} mcp, ${configSummary!.sounders} snd)`,
-                ],
-                hint: 'Press POWER ON LOOP to start',
+                status: isNameMismatch ? 'fault' as const : 'normal' as const,
+                message: isNameMismatch ? 'CONFIG WARNING' : 'CONFIG LOADED',
+                details,
+                hint: isNameMismatch ? 'Config may not be for this project' : 'Press POWER ON LOOP to start',
             };
         }
 
         // Powered on - check device match
         if (isConfigMismatch && deviceMatch) {
             const missingCount = deviceMatch.missing.length;
+            const typeMismatchCount = deviceMatch.typeMismatch?.length || 0;
+            const details = [];
+            if (missingCount > 0) {
+                details.push(`Missing: ${missingCount} device${missingCount !== 1 ? 's' : ''}`);
+            }
+            if (typeMismatchCount > 0) {
+                details.push(`Type mismatch: ${typeMismatchCount} device${typeMismatchCount !== 1 ? 's' : ''}`);
+            }
+            details.push('Check Config Status panel →');
             return {
                 status: 'fault' as const,
                 message: 'DEVICE MISMATCH',
-                details: [
-                    `Missing: ${missingCount} device${missingCount !== 1 ? 's' : ''}`,
-                    'Check Config Status panel →',
-                ],
-                hint: 'Add missing devices to floor plan',
+                details,
+                hint: 'Fix device types or add missing devices',
             };
         }
 

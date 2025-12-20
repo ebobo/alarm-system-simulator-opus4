@@ -188,60 +188,93 @@ export function buildDeviceAddressMap(config: FAConfig): Map<string, FAConfigDev
  */
 export interface DeviceMatchResult {
     valid: boolean;
-    matched: string[];      // Device addresses that match
-    missing: string[];      // Config devices not found in placed devices
-    extra: string[];        // Placed devices not in config
+    matched: string[];              // Device addresses that match (address + type)
+    missing: string[];              // Config devices not found in placed devices
+    extra: string[];                // Placed devices not in config
+    typeMismatch: string[];         // Devices where address matches but type doesn't
+    placedTypes: Map<string, string>; // Map of address to actual placed device typeId
+}
+
+/**
+ * Map placed device typeId to config device type
+ * Note: AG-socket (socket) is NOT the same as detector (socket + head)
+ * The config type must match exactly with the placed device typeId
+ */
+function mapDeviceTypeIdToConfigType(typeId: string): string {
+    // Return the typeId as-is - no mapping needed
+    // Config should use the same type names: AG-socket, mcp, sounder, etc.
+    return typeId;
 }
 
 /**
  * Validate that placed devices match the config
- * Devices are matched by address (the loop label like "A.001.001")
+ * Devices are matched by address (the loop label like "A.001.001") AND type
  */
 export function validateDeviceMatch(
     config: FAConfig,
     placedDevices: PlacedDevice[]
 ): DeviceMatchResult {
-    const configAddresses = new Set(config.devices.map(d => d.address));
+    // Build a map of config devices by address
+    const configDeviceMap = new Map<string, FAConfigDevice>();
+    for (const device of config.devices) {
+        configDeviceMap.set(device.address, device);
+    }
 
-    // Get addresses from placed devices that have them
-    // PlacedDevice may need an address field - for now we'll use label or instanceId
-    const placedAddresses = new Set<string>();
+    // Build a map of placed devices by address (label)
+    const placedDeviceMap = new Map<string, PlacedDevice>();
     for (const device of placedDevices) {
         // Skip non-loop devices (panel, loop-driver)
         if (device.typeId === 'panel' || device.typeId === 'loop-driver') {
             continue;
         }
-        // Use the device's label if it looks like an address, otherwise skip
+        // Use the device's label if it looks like an address
         if (device.label && /^[A-Z]\.\d{3}\.\d{3}$/.test(device.label)) {
-            placedAddresses.add(device.label);
+            placedDeviceMap.set(device.label, device);
         }
     }
 
     const matched: string[] = [];
     const missing: string[] = [];
     const extra: string[] = [];
+    const typeMismatch: string[] = [];
+    const placedTypes = new Map<string, string>();
 
-    // Find matched and missing
-    for (const addr of configAddresses) {
-        if (placedAddresses.has(addr)) {
-            matched.push(addr);
-        } else {
+    // Check each config device
+    for (const [addr, configDevice] of configDeviceMap) {
+        const placedDevice = placedDeviceMap.get(addr);
+        if (!placedDevice) {
+            // Device address not found in placed devices
             missing.push(addr);
+        } else {
+            // Store the placed device typeId
+            const placedType = mapDeviceTypeIdToConfigType(placedDevice.typeId);
+            placedTypes.set(addr, placedType);
+
+            // Check if type matches
+            if (placedType === configDevice.type) {
+                matched.push(addr);
+            } else {
+                // Address matches but type doesn't
+                typeMismatch.push(addr);
+            }
         }
     }
 
-    // Find extra devices
-    for (const addr of placedAddresses) {
-        if (!configAddresses.has(addr)) {
+    // Find extra devices (placed but not in config)
+    for (const [addr, device] of placedDeviceMap) {
+        if (!configDeviceMap.has(addr)) {
             extra.push(addr);
+            placedTypes.set(addr, device.typeId);
         }
     }
 
     return {
-        valid: missing.length === 0,
+        valid: missing.length === 0 && typeMismatch.length === 0,
         matched,
         missing,
-        extra
+        extra,
+        typeMismatch,
+        placedTypes
     };
 }
 
