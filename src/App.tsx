@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
+
 import type { DragEndEvent, DragStartEvent, DragMoveEvent } from '@dnd-kit/core';
 import FloorPlanViewer from './components/FloorPlanViewer';
 import Sidebar from './components/Sidebar';
@@ -90,7 +91,23 @@ function DeviceDragPreview({ deviceTypeId }: { deviceTypeId: string | null }) {
     );
   }
 
-  // Default - detector preview (circle)
+  if (deviceTypeId === 'AG-head') {
+    // AG Head preview (formerly AG Detector) - white dome with red LED, no terminals
+    return (
+      <svg width="30" height="30" viewBox="-15 -15 30 30" className="drop-shadow-lg">
+        {/* Outer circle - white */}
+        <circle r="14" fill="#F8FAFC" stroke="#64748B" strokeWidth="2" />
+        {/* Inner circle */}
+        <circle r="9" fill="#E2E8F0" stroke="#94A3B8" strokeWidth="1.5" />
+        {/* Center indicator - red LED */}
+        <circle r="3.5" fill="#FEE2E2" stroke="#F87171" strokeWidth="1" />
+        {/* Center dot */}
+        <circle r="1.5" fill="#EF4444" />
+      </svg>
+    );
+  }
+
+  // Default - AG Socket preview (circle with terminals)
   return (
     <svg width="40" height="40" viewBox="-20 -20 40 40" className="drop-shadow-lg">
       {/* Outer circle */}
@@ -120,6 +137,7 @@ function App() {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [dragDelta, setDragDelta] = useState<{ x: number; y: number } | null>(null);
+  const [snapToSocketId, setSnapToSocketId] = useState<string | null>(null); // Socket to snap detector to
 
   // Wire connection state
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -277,11 +295,17 @@ function App() {
     };
   }, [config, svgContent, placedDevices, connections]);
 
-  // Configure drag sensor with activation constraints
+  // Configure drag sensors - split mouse and touch for better reliability
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 5, // Minimum drag distance before activation
+        distance: 5,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250,
+        tolerance: 5,
       },
     })
   );
@@ -483,11 +507,11 @@ function App() {
 
   // Handle drag start
   const handleDragStart = (event: DragStartEvent) => {
-    const { active } = event;
-    const id = active.id as string;
-    setActiveDragId(id);
+    setActiveDragId(event.active.id as string);
+    setDragDelta({ x: 0, y: 0 });
 
     // If dragging a placed device, select it
+    const id = event.active.id as string;
     if (id.startsWith('placed-')) {
       const instanceId = id.replace('placed-', '');
       setSelectedDeviceId(instanceId);
@@ -496,7 +520,7 @@ function App() {
 
   // Handle drag move - update projection position
   const handleDragMove = (event: DragMoveEvent) => {
-    const { activatorEvent, delta } = event;
+    const { activatorEvent, delta, active } = event;
     const pointerEvent = activatorEvent as PointerEvent;
     if (!pointerEvent) return;
 
@@ -510,6 +534,19 @@ function App() {
     const currentX = pointerEvent.clientX + delta.x;
     const currentY = pointerEvent.clientY + delta.y;
 
+    // Check if dragging AG-head (from palette or existing)
+    const dragId = active.id as string;
+    let isDraggingDetector = dragId === 'palette-AG-head';
+
+    // Also check if dragging an existing placed detector
+    if (!isDraggingDetector && dragId.startsWith('placed-')) {
+      const instanceId = dragId.replace('placed-', '');
+      const device = placedDevices.find(d => d.instanceId === instanceId);
+      if (device && device.typeId === 'AG-head') {
+        isDraggingDetector = true;
+      }
+    }
+
     // Check if pointer is over the floor plan
     if (
       currentX >= containerRect.left &&
@@ -522,10 +559,12 @@ function App() {
 
       // Calculate snapping
       const SNAP_THRESHOLD = 5; // units in plan coordinates
+      const SOCKET_SNAP_THRESHOLD = 30; // Larger threshold for socket snap
       let snappedX = planCoords.x;
       let snappedY = planCoords.y;
       let guideX: number | null = null;
       let guideY: number | null = null;
+      let foundSnapSocket: string | null = null;
 
       // Find alignment candidates excluding the currently dragged device (if it exists)
       const currentDragInstanceId = activeDragId?.startsWith('placed-') ? activeDragId.replace('placed-', '') : null;
@@ -533,27 +572,47 @@ function App() {
       for (const device of placedDevices) {
         if (device.instanceId === currentDragInstanceId) continue;
 
+        // Check for socket snap when dragging detector
+        if (isDraggingDetector &&
+          device.typeId === 'AG-socket' &&
+          !device.mountedDetectorId) {
+          const distToSocket = Math.sqrt(
+            Math.pow(device.x - planCoords.x, 2) +
+            Math.pow(device.y - planCoords.y, 2)
+          );
+          if (distToSocket < SOCKET_SNAP_THRESHOLD) {
+            // Snap to socket center
+            snappedX = device.x;
+            snappedY = device.y;
+            foundSnapSocket = device.instanceId;
+            // Skip regular alignment when snapping to socket
+            continue;
+          }
+        }
+
         // Horizontal alignment (match Y)
         const distY = Math.abs(device.y - planCoords.y);
-        if (distY < SNAP_THRESHOLD) {
+        if (distY < SNAP_THRESHOLD && !foundSnapSocket) {
           snappedY = device.y;
           guideY = device.y;
         }
 
         // Vertical alignment (match X)
         const distX = Math.abs(device.x - planCoords.x);
-        if (distX < SNAP_THRESHOLD) {
+        if (distX < SNAP_THRESHOLD && !foundSnapSocket) {
           snappedX = device.x;
           guideX = device.x;
         }
       }
 
+      setSnapToSocketId(foundSnapSocket);
       setProjectionPosition({ x: snappedX, y: snappedY });
-      setAlignmentGuides({ horizontal: guideY, vertical: guideX });
+      setAlignmentGuides(foundSnapSocket ? { horizontal: null, vertical: null } : { horizontal: guideY, vertical: guideX });
 
     } else {
       setProjectionPosition(null);
       setAlignmentGuides({ horizontal: null, vertical: null });
+      setSnapToSocketId(null);
     }
   };
 
@@ -562,9 +621,11 @@ function App() {
     const { active, over, delta } = event;
     const id = active.id as string;
 
+    // Reset drag state
     setActiveDragId(null);
+    setDragDelta({ x: 0, y: 0 });
     setProjectionPosition(null);
-    setDragDelta(null);
+    setSnapToSocketId(null);
     setAlignmentGuides({ horizontal: null, vertical: null });
 
     const containerRect = getContainerRect();
@@ -599,14 +660,42 @@ function App() {
 
     // Apply snapping logic (same as handleDragMove)
     const SNAP_THRESHOLD = 5;
+    const SOCKET_SNAP_THRESHOLD = 30;
     let finalX = planCoords.x;
     let finalY = planCoords.y;
 
-    // Calculate snapping if we have alignment candidates
+    // Check if dropping AG-head (palette or existing)
+    const isDroppingDetectorFromPalette = id === 'palette-AG-head';
+    let isDroppingDetector = isDroppingDetectorFromPalette;
+
     const currentDragInstanceId = id.startsWith('placed-') ? id.replace('placed-', '') : null;
 
+    if (!isDroppingDetector && currentDragInstanceId) {
+      const device = placedDevices.find(d => d.instanceId === currentDragInstanceId);
+      if (device && device.typeId === 'AG-head') {
+        isDroppingDetector = true;
+      }
+    }
+
+    // Calculate snapping if we have alignment candidates
     for (const device of placedDevices) {
       if (device.instanceId === currentDragInstanceId) continue;
+
+      // Check for socket snap when dropping detector
+      if (isDroppingDetector &&
+        device.typeId === 'AG-socket' &&
+        !device.mountedDetectorId) {
+        const distToSocket = Math.sqrt(
+          Math.pow(device.x - planCoords.x, 2) +
+          Math.pow(device.y - planCoords.y, 2)
+        );
+        if (distToSocket < SOCKET_SNAP_THRESHOLD) {
+          // Snap to socket center
+          finalX = device.x;
+          finalY = device.y;
+          break; // Socket found, no need for further snapping
+        }
+      }
 
       // Horizontal alignment (match Y)
       const distY = Math.abs(device.y - planCoords.y);
@@ -631,9 +720,61 @@ function App() {
       const getDeviceTypeLabel = () => {
         if (deviceTypeId === 'loop-driver') return 'BSD-1000';
         if (deviceTypeId === 'AG-socket') return 'AG-socket';
+        if (deviceTypeId === 'AG-head') return 'AG Head';
         return deviceType.name;
       };
 
+      // Check if AG-head is being dropped on/near an AG-socket for auto-mounting
+      if (deviceTypeId === 'AG-head') {
+        const MOUNT_THRESHOLD = 30; // Distance within which detector auto-mounts to socket
+        const targetSocket = placedDevices.find(dev =>
+          dev.typeId === 'AG-socket' &&
+          !dev.mountedDetectorId && // Socket doesn't already have a detector
+          Math.abs(dev.x - finalX) < MOUNT_THRESHOLD &&
+          Math.abs(dev.y - finalY) < MOUNT_THRESHOLD
+        );
+
+        if (targetSocket) {
+          // Create new detector at socket position with mounting
+          // Label logic: socket label takes precedence, use default if socket is empty
+          const finalLabel = targetSocket.label || '';
+
+          try {
+            const newDetector: PlacedDevice = {
+              instanceId: generateInstanceId(),
+              typeId: deviceTypeId,
+              x: targetSocket.x,  // Detector position matches socket
+              y: targetSocket.y,
+              rotation: 0,
+              deviceType: 'AG-detector',
+              deviceId: null,
+              cAddress: null,
+              label: finalLabel,
+              sn: generateSerialNumber(),
+              mountedOnSocketId: targetSocket.instanceId,
+            };
+
+            setPlacedDevices(prev => [
+              ...prev.map(dev =>
+                dev.instanceId === targetSocket.instanceId
+                  ? { ...dev, mountedDetectorId: newDetector.instanceId, label: finalLabel }
+                  : dev
+              ),
+              newDetector
+            ]);
+
+            // Select the socket (which now represents the AG Detector)
+            setSelectedDeviceId(targetSocket.instanceId);
+            setSelectedWireId(null);
+            setSelectedRoom(null);
+          } catch (error) {
+            // Silently fail if mounting fails
+          }
+          return;
+        }
+      }
+
+      // Regular device placement (including free-placed AG-head)
       const newDevice: PlacedDevice = {
         instanceId: generateInstanceId(),
         typeId: deviceTypeId,
@@ -654,21 +795,91 @@ function App() {
       setSelectedWireId(null);   // Deselect wire when placing device
       setSelectedRoom(null);     // Deselect room when placing device
     } else if (id.startsWith('placed-')) {
-      // Moving existing device
+      // Check for mounting when moving an existing detector
+      if (currentDragInstanceId) {
+        const movedDevice = placedDevices.find(d => d.instanceId === currentDragInstanceId);
+
+        // If moving AG-head onto an empty AG-socket
+        if (movedDevice?.typeId === 'AG-head') {
+          const MOUNT_THRESHOLD = 30;
+          const targetSocket = placedDevices.find(dev =>
+            dev.typeId === 'AG-socket' &&
+            !dev.mountedDetectorId &&
+            Math.abs(dev.x - finalX) < MOUNT_THRESHOLD &&
+            Math.abs(dev.y - finalY) < MOUNT_THRESHOLD
+          );
+
+          if (targetSocket) {
+            // Mount existing detector onto socket
+            // Label logic: socket label takes precedence, use head label if socket is empty
+            const finalLabel = targetSocket.label || movedDevice.label;
+
+            setPlacedDevices(prev =>
+              prev.map(dev => {
+                // Update socket to reference mounted detector and use final label
+                if (dev.instanceId === targetSocket.instanceId) {
+                  return { ...dev, mountedDetectorId: movedDevice.instanceId, label: finalLabel };
+                }
+                // Update detector to reference socket and match position
+                if (dev.instanceId === movedDevice.instanceId) {
+                  // Label logic: socket label takes precedence, use head label if socket is empty
+                  return {
+                    ...dev,
+                    x: targetSocket.x,
+                    y: targetSocket.y,
+                    mountedOnSocketId: targetSocket.instanceId,
+                    label: finalLabel,
+                    deviceType: 'AG-detector',
+                  };
+                }
+                return dev;
+              })
+            );
+            // Select the socket (which now represents the AG Detector)
+            setSelectedDeviceId(targetSocket.instanceId);
+            setSelectedWireId(null);
+            return; // handled
+          }
+        }
+      }
+
+      // Moving existing device (standard move)
       const instanceId = id.replace('placed-', '');
-      setPlacedDevices(prev =>
-        prev.map(device =>
-          device.instanceId === instanceId
-            ? { ...device, x: finalX, y: finalY }
-            : device
-        )
-      );
+
+      setPlacedDevices(prev => {
+        // Find the device being moved
+        const movingDevice = prev.find(d => d.instanceId === instanceId);
+        if (!movingDevice) return prev;
+
+        const oldSocketId = movingDevice.mountedOnSocketId;
+
+        return prev.map(d => {
+          // If this is the OLD socket, clear its mounted detector reference
+          if (oldSocketId && d.instanceId === oldSocketId) {
+            return { ...d, mountedDetectorId: undefined };
+          }
+
+          // If this is the moving device
+          if (d.instanceId === instanceId) {
+            // Clear mount references if it was mounted, and update position/label
+            // If it was mounted, clear the label and revert deviceType to AG Head
+            if (oldSocketId) {
+              return { ...d, x: finalX, y: finalY, mountedOnSocketId: undefined, label: '', deviceType: 'AG Head' };
+            }
+            return { ...d, x: finalX, y: finalY };
+          }
+
+          return d;
+        });
+      });
     }
   };
 
   // Handle device click for selection
-  const handleDeviceClick = (instanceId: string) => {
-    setSelectedDeviceId(prev => (prev === instanceId ? null : instanceId));
+  const handleDeviceClick = (deviceId: string) => {
+    // Always select the clicked device (even if it's a socket with mounted detector)
+    // The property panel will handle showing AG Detector properties if socket has mounted detector
+    setSelectedDeviceId(prev => (prev === deviceId ? null : deviceId));
     setSelectedWireId(null); // Deselect wire when selecting device
     setSelectedRoom(null);   // Deselect room when selecting device
   };
@@ -935,6 +1146,7 @@ function App() {
                 activeDragId={activeDragId}
                 projectionPosition={projectionPosition}
                 projectionDeviceTypeId={getDraggedDeviceTypeId()}
+                snapToSocketId={snapToSocketId}
                 onTransformChange={handleTransformChange}
                 onDeviceClick={handleDeviceClick}
                 onWireClick={handleWireClick}
@@ -980,6 +1192,7 @@ function App() {
             {!isDevicePaletteCollapsed && (
               <DevicePropertyPanel
                 selectedDevice={placedDevices.find(d => d.instanceId === selectedDeviceId) || null}
+                allDevices={placedDevices}
                 selectedWire={connections.find(c => c.id === selectedWireId) || null}
                 selectedRoom={selectedRoom}
                 floorPlanInfo={{
@@ -1001,6 +1214,33 @@ function App() {
                   // Remove the device
                   setPlacedDevices(prev => prev.filter(d => d.instanceId !== deviceId));
                   setSelectedDeviceId(null);
+                }}
+                onRemoveDetector={(detectorId, socketId) => {
+                  // Find the socket to get its position
+                  const socket = placedDevices.find(d => d.instanceId === socketId);
+                  if (!socket) return;
+
+                  // Update devices: clear mountedDetectorId from socket, move detector next to socket
+                  setPlacedDevices(prev => prev.map(dev => {
+                    if (dev.instanceId === socketId) {
+                      // Clear mounted detector reference from socket
+                      return { ...dev, mountedDetectorId: undefined };
+                    }
+                    if (dev.instanceId === detectorId) {
+                      // Move detector next to socket (e.g. +40px x)
+                      return {
+                        ...dev,
+                        x: socket.x + 40,
+                        y: socket.y,
+                        mountedOnSocketId: undefined,
+                        deviceType: 'AG Head' // Revert to AG Head
+                      };
+                    }
+                    return dev;
+                  }));
+
+                  // Keep the detector selected
+                  setSelectedDeviceId(detectorId);
                 }}
               />
             )}
@@ -1108,7 +1348,21 @@ function App() {
       </div>
 
       {/* Drag Overlay - shows the device icon while dragging */}
-      <DragOverlay dropAnimation={null}>
+      <DragOverlay
+        dropAnimation={null}
+        modifiers={[
+          // Center the drag preview under the cursor
+          ({ transform }) => ({
+            ...transform,
+            x: transform.x,  // Keep the x position
+            y: transform.y,  // Keep the y position
+          }),
+        ]}
+        style={{
+          cursor: 'grabbing',
+          pointerEvents: 'none', // Don't block mouse release events
+        }}
+      >
         {isDragging && <DeviceDragPreview deviceTypeId={getDraggedDeviceTypeId()} />}
       </DragOverlay>
     </DndContext>

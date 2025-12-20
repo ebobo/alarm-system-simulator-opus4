@@ -121,6 +121,19 @@ function DraggableDeviceItem({ deviceType }: DraggableDeviceItemProps) {
                             <path d="M9 10 Q7 12 9 14" strokeWidth="1.5" strokeLinecap="round" />
                             <path d="M15 10 Q17 12 15 14" strokeWidth="1.5" strokeLinecap="round" />
                         </svg>
+                    ) : deviceType.id === 'AG-head' ? (
+                        // AG Head icon - white dome with red LED (smaller version)
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className={`w-4 h-4 ${styles.icon}`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <circle cx="12" cy="12" r="9" strokeWidth="2" fill="#F8FAFC" />
+                            <circle cx="12" cy="12" r="5" strokeWidth="1.5" fill="#E2E8F0" />
+                            <circle cx="12" cy="12" r="2" strokeWidth="1" fill="#EF4444" />
+                        </svg>
                     ) : (
                         // Circle icon for detectors
                         <svg

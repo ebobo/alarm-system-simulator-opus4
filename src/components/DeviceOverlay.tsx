@@ -9,6 +9,7 @@ interface DeviceOverlayProps {
     activeDragId?: string | null;
     projectionPosition?: { x: number; y: number } | null;
     projectionDeviceTypeId?: string | null;
+    snapToSocketId?: string | null;  // Socket being snapped to during detector drag
     viewportTransform: ViewportTransform;
     onDeviceClick?: (instanceId: string) => void;
     onWireClick?: (wireId: string) => void;
@@ -25,6 +26,7 @@ function DraggableDevice({
     device,
     isSelected,
     isDragging,
+    isSnapTarget = false,
     viewportTransform,
     onDeviceClick,
     onWireStart,
@@ -33,6 +35,7 @@ function DraggableDevice({
     device: PlacedDevice;
     isSelected: boolean;
     isDragging: boolean;
+    isSnapTarget?: boolean;
     viewportTransform: ViewportTransform;
     onDeviceClick?: (instanceId: string) => void;
     onWireStart?: (deviceId: string, terminalId: string, e: React.PointerEvent) => void;
@@ -282,8 +285,43 @@ function DraggableDevice({
                             P
                         </text>
                     </>
+                ) : device.typeId === 'AG-head' ? (
+                    <>
+                        {/* Selection ring for AG Head */}
+                        {isSelected && (
+                            <circle
+                                r="17"
+                                fill="none"
+                                stroke="#3B82F6"
+                                strokeWidth="2"
+                                strokeDasharray="4 2"
+                            />
+                        )}
+
+                        {/* AG Head body - white dome */}
+                        <circle r="15" fill="#F8FAFC" stroke="#64748B" strokeWidth="2" />
+
+                        {/* Inner ring */}
+                        <circle r="10" fill="#E2E8F0" stroke="#94A3B8" strokeWidth="1.5" />
+
+                        {/* Center indicator - red LED */}
+                        <circle r="4" fill="#FEE2E2" stroke="#F87171" strokeWidth="1" />
+                        <circle r="1.5" fill="#EF4444" />
+                    </>
                 ) : (
                     <>
+                        {/* Snap target glow ring (shown when detector is being dragged near this socket) */}
+                        {isSnapTarget && !device.mountedDetectorId && (
+                            <circle
+                                r="26"
+                                fill="none"
+                                stroke="#22C55E"
+                                strokeWidth="3"
+                                className="animate-pulse"
+                                opacity="0.8"
+                            />
+                        )}
+
                         {/* Selection ring for circular device */}
                         {isSelected && (
                             <circle
@@ -300,16 +338,32 @@ function DraggableDevice({
                         <circle r="13" fill="#E2E8F0" stroke="#64748B" strokeWidth="1.5" />
                         <circle r="5" fill="#CBD5E1" stroke="#94A3B8" strokeWidth="1" />
                         <circle r="2" fill="#64748B" />
+
+                        {/* Mounted detector head overlay (shown when socket has mounted detector) */}
+                        {device.mountedDetectorId && (
+                            <>
+                                <circle r="12" fill="#F8FAFC" stroke="#64748B" strokeWidth="1.5" />
+                                <circle r="8" fill="#E2E8F0" stroke="#94A3B8" strokeWidth="1" />
+                                <circle r="3" fill="#FEE2E2" stroke="#F87171" strokeWidth="0.5" />
+                                <circle r="1" fill="#EF4444" />
+                            </>
+                        )}
                     </>
                 )}
 
-                {/* Terminals */}
-                {deviceType.terminals.map((terminal) => {
+                {/* Terminals - only show if not mounted */}
+                {!device.mountedDetectorId && deviceType.terminals.map((terminal) => {
                     const svgtX = terminal.relativeX * deviceType.width;
                     const svgtY = terminal.relativeY * deviceType.height;
 
+                    // Check if terminals should be disabled (e.g. socket has mounted detector)
+                    const isDisabled = !!device.mountedDetectorId;
+
                     // Get terminal color based on terminal type for loop driver
                     const getTerminalColor = () => {
+                        if (isDisabled) {
+                            return { fill: '#94A3B8', stroke: '#64748B' }; // Gray for disabled
+                        }
                         if (device.typeId === 'loop-driver') {
                             if (terminal.id.startsWith('loop-in')) {
                                 return { fill: '#F97316', stroke: '#C2410C' }; // Orange for loop in
@@ -329,20 +383,22 @@ function DraggableDevice({
 
                     return (
                         <g key={terminal.id} transform={`translate(${svgtX}, ${svgtY})`}>
-                            {/* Hit area */}
-                            <circle
-                                r="8"
-                                fill="transparent"
-                                style={{ cursor: 'crosshair', pointerEvents: 'all' }}
-                                onPointerDown={(e) => {
-                                    e.stopPropagation();
-                                    onWireStart?.(device.instanceId, terminal.id, e);
-                                }}
-                                onPointerUp={(e) => {
-                                    e.stopPropagation();
-                                    onWireEnd?.(device.instanceId, terminal.id);
-                                }}
-                            />
+                            {/* Hit area - only interactive if not disabled */}
+                            {!isDisabled && (
+                                <circle
+                                    r="8"
+                                    fill="transparent"
+                                    style={{ cursor: 'crosshair', pointerEvents: 'all' }}
+                                    onPointerDown={(e) => {
+                                        e.stopPropagation();
+                                        onWireStart?.(device.instanceId, terminal.id, e);
+                                    }}
+                                    onPointerUp={(e) => {
+                                        e.stopPropagation();
+                                        onWireEnd?.(device.instanceId, terminal.id);
+                                    }}
+                                />
+                            )}
                             {/* Visible terminal */}
                             <circle r="5" fill={colors.fill} stroke={colors.stroke} strokeWidth="1.5" style={{ pointerEvents: 'none' }} />
                         </g>
@@ -374,8 +430,9 @@ function ProjectionGuide({
     const isPanel = deviceTypeId === 'panel';
     const isMcp = deviceTypeId === 'mcp';
     const isSounder = deviceTypeId === 'sounder';
-    const sizeX = isLoopDriver ? 50 * scale : isPanel ? 35 * scale : isMcp ? 35 * scale : isSounder ? 38 * scale : 48 * scale;
-    const sizeY = isLoopDriver ? 30 * scale : isPanel ? 25 * scale : isMcp ? 35 * scale : isSounder ? 38 * scale : 48 * scale;
+    const isAGHead = deviceTypeId === 'AG-head';
+    const sizeX = isLoopDriver ? 50 * scale : isPanel ? 35 * scale : isMcp ? 35 * scale : isSounder ? 38 * scale : isAGHead ? 30 * scale : 48 * scale;
+    const sizeY = isLoopDriver ? 30 * scale : isPanel ? 25 * scale : isMcp ? 35 * scale : isSounder ? 38 * scale : isAGHead ? 30 * scale : 48 * scale;
 
     return (
         <div
@@ -463,6 +520,21 @@ function ProjectionGuide({
                     <line x1="-10" y1="0" x2="10" y2="0" stroke="#F97316" strokeWidth="1" opacity="0.5" />
                     <line x1="0" y1="-10" x2="0" y2="10" stroke="#F97316" strokeWidth="1" opacity="0.5" />
                     <circle r="3" fill="#F97316" opacity="0.8" />
+                </svg>
+            ) : isAGHead ? (
+                // Circular projection for AG Detector (white/gray)
+                <svg width={sizeX} height={sizeY} viewBox="-15 -15 30 30">
+                    <circle
+                        r="13"
+                        fill="none"
+                        stroke="#64748B"
+                        strokeWidth="2"
+                        strokeDasharray="6 3"
+                        opacity="0.7"
+                    />
+                    <circle r="11" fill="#F8FAFC" opacity="0.5" />
+                    <circle r="7" fill="#E2E8F0" opacity="0.6" />
+                    <circle r="2" fill="#EF4444" opacity="0.8" />
                 </svg>
             ) : (
                 // Circular projection for detectors
@@ -554,6 +626,7 @@ export default function DeviceOverlay({
     activeDragId,
     projectionPosition,
     projectionDeviceTypeId,
+    snapToSocketId,
     viewportTransform,
     onDeviceClick,
     onWireClick,
@@ -675,24 +748,40 @@ export default function DeviceOverlay({
             )}
 
             {/* Devices */}
-            {devices.map((device) => {
-                const isSelected = device.instanceId === selectedDeviceId;
-                const isDragging = activeDragId === `placed-${device.instanceId}`;
+            {devices
+                .filter(device => !device.mountedOnSocketId) // Skip mounted detectors - shown via socket overlay
+                .filter(device => {
+                    // Defensive: skip devices with missing typeId
+                    if (!device.typeId) {
+                        return false;
+                    }
+                    // Defensive: skip devices if deviceType lookup fails
+                    const deviceType = getDeviceType(device.typeId);
+                    if (!deviceType) {
+                        return false;
+                    }
+                    return true;
+                })
+                .map((device) => {
+                    const isSelected = device.instanceId === selectedDeviceId;
+                    const isDragging = activeDragId === `placed-${device.instanceId}`;
+                    const isSnapTarget = device.instanceId === snapToSocketId;
 
-                return (
-                    <div key={device.instanceId} style={{ pointerEvents: 'auto' }}>
-                        <DraggableDevice
-                            device={device}
-                            isSelected={isSelected}
-                            isDragging={isDragging}
-                            viewportTransform={viewportTransform}
-                            onDeviceClick={onDeviceClick}
-                            onWireStart={onWireStart}
-                            onWireEnd={onWireEnd}
-                        />
-                    </div>
-                );
-            })}
+                    return (
+                        <div key={device.instanceId} style={{ pointerEvents: 'auto' }}>
+                            <DraggableDevice
+                                device={device}
+                                isSelected={isSelected}
+                                isDragging={isDragging}
+                                isSnapTarget={isSnapTarget}
+                                viewportTransform={viewportTransform}
+                                onDeviceClick={onDeviceClick}
+                                onWireStart={onWireStart}
+                                onWireEnd={onWireEnd}
+                            />
+                        </div>
+                    );
+                })}
         </div>
     );
 }

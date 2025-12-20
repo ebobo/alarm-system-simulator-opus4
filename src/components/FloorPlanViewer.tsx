@@ -14,6 +14,7 @@ interface FloorPlanViewerProps {
     activeDragId?: string | null;
     projectionPosition?: { x: number; y: number } | null;
     projectionDeviceTypeId?: string | null;
+    snapToSocketId?: string | null;  // Socket being snapped to during detector drag
     onTransformChange?: (transform: ViewportTransform) => void;
     onDeviceClick?: (instanceId: string) => void;
     onWireClick?: (wireId: string) => void;
@@ -73,6 +74,7 @@ export default function FloorPlanViewer({
     activeDragId,
     projectionPosition,
     projectionDeviceTypeId,
+    snapToSocketId,
     onTransformChange,
     onDeviceClick,
     onWireClick,
@@ -186,6 +188,7 @@ export default function FloorPlanViewer({
                 activeDragId={activeDragId}
                 projectionPosition={projectionPosition}
                 projectionDeviceTypeId={projectionDeviceTypeId}
+                snapToSocketId={snapToSocketId}
                 viewportTransform={localTransform}
                 onDeviceClick={onDeviceClick}
                 onWireClick={onWireClick}

@@ -113,6 +113,18 @@ export function discoverLoopDevices(
     let addressCounter = 1;
     const discoveredIds = new Set<string>();
 
+    // Helper: Get the device to report for discovery
+    // If device is an AG-socket with mounted detector, report the detector instead
+    const getDeviceToReport = (device: PlacedDevice): PlacedDevice => {
+        if (device.typeId === 'AG-socket' && device.mountedDetectorId) {
+            const mountedDetector = placedDevices.find(d => d.instanceId === device.mountedDetectorId);
+            if (mountedDetector) {
+                return mountedDetector;
+            }
+        }
+        return device;
+    };
+
     // Phase 1: Discover from LOOP-OUT (baby blue / negative)
     const outDevices = traverseFromTerminal(
         loopDriverId,
@@ -123,15 +135,19 @@ export function discoverLoopDevices(
     );
 
     for (const device of outDevices) {
+        const reportDevice = getDeviceToReport(device);
         discovered.push({
-            instanceId: device.instanceId,
+            instanceId: reportDevice.instanceId,
             cAddress: addressCounter++,
             discoveredFrom: 'out',
-            label: device.label || device.deviceType,
-            typeId: device.typeId,
-            sn: device.sn
+            label: reportDevice.label || reportDevice.deviceType,
+            typeId: reportDevice.typeId === 'AG-head' ? 'AG-detector' : reportDevice.typeId,
+            sn: reportDevice.sn
         });
-        discoveredIds.add(device.instanceId);
+        discoveredIds.add(device.instanceId); // Track original socket ID to avoid re-discovery
+        if (reportDevice.instanceId !== device.instanceId) {
+            discoveredIds.add(reportDevice.instanceId); // Also track detector ID
+        }
     }
 
     // Phase 2: Discover from LOOP-IN (orange / positive)
@@ -149,15 +165,19 @@ export function discoverLoopDevices(
     // In a broken loop, these are the devices reachable from the other side
     for (const device of inDevices.reverse()) {
         if (!discoveredIds.has(device.instanceId)) {
+            const reportDevice = getDeviceToReport(device);
             discovered.push({
-                instanceId: device.instanceId,
+                instanceId: reportDevice.instanceId,
                 cAddress: addressCounter++,
                 discoveredFrom: 'in',
-                label: device.label || device.deviceType,
-                typeId: device.typeId,
-                sn: device.sn
+                label: reportDevice.label || reportDevice.deviceType,
+                typeId: reportDevice.typeId === 'AG-head' ? 'AG-detector' : reportDevice.typeId,
+                sn: reportDevice.sn
             });
             discoveredIds.add(device.instanceId);
+            if (reportDevice.instanceId !== device.instanceId) {
+                discoveredIds.add(reportDevice.instanceId);
+            }
         }
     }
 

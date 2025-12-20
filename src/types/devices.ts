@@ -44,6 +44,10 @@ export interface PlacedDevice {
     sn: number;                  // Serial number: random 48-bit number
     // Loop Driver specific
     ipAddress?: string;          // IPv4 address for Loop Driver, editable
+    // AG Socket specific - ID of mounted detector
+    mountedDetectorId?: string;
+    // AG Detector specific - ID of socket it's mounted on (null if freely placed)
+    mountedOnSocketId?: string;
 }
 
 export interface ViewportTransform {
@@ -142,6 +146,15 @@ export const DEVICE_TYPES: Record<string, DeviceType> = {
         width: 40,
         height: 40,
         terminals: AUTROGUARD_TERMINALS,
+    },
+    'AG-head': {
+        id: 'AG-head',
+        name: 'AG Head',
+        category: 'detector',
+        description: 'Detector head - can mount on AG Socket to form an AG Detector',
+        width: 30,
+        height: 30,
+        terminals: [],  // No terminals - uses socket's terminals when mounted
     },
     'loop-driver': {
         id: 'loop-driver',
