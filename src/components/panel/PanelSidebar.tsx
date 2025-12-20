@@ -16,6 +16,8 @@ interface PanelSidebarProps {
     modules: PanelModule[];
     activeTab: TabType;
     onTabChange: (tab: TabType) => void;
+    isCollapsed: boolean;
+    onToggleCollapse: () => void;
 }
 
 export default function PanelSidebar({
@@ -24,7 +26,9 @@ export default function PanelSidebar({
     isPoweredOn,
     modules,
     activeTab,
-    onTabChange
+    onTabChange,
+    isCollapsed,
+    onToggleCollapse
 }: PanelSidebarProps) {
 
     // Get status indicator color for header icon
@@ -35,6 +39,14 @@ export default function PanelSidebar({
         return 'from-red-400 to-red-600';
     };
 
+    // Get solid color for collapsed status dot
+    const getStatusDotColor = () => {
+        if (!config) return 'bg-slate-500';
+        if (!isPoweredOn) return 'bg-amber-500';
+        if (matchResult?.valid) return 'bg-green-500';
+        return 'bg-red-500';
+    };
+
     const getStatusText = () => {
         if (modules.length === 0) return 'No Panel';
         if (!config) return 'No Config';
@@ -43,6 +55,45 @@ export default function PanelSidebar({
         return 'Mismatch';
     };
 
+    // Collapsed view - narrow strip with status dot and vertical label
+    if (isCollapsed) {
+        return (
+            <div className="flex-1 flex flex-col items-center py-4 text-white overflow-hidden">
+                {/* Expand button at top */}
+                <button
+                    onClick={onToggleCollapse}
+                    className="w-8 h-8 mb-4 bg-slate-700 hover:bg-slate-600 rounded-lg flex items-center justify-center transition-colors"
+                    title="Expand Panel Status"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+
+                {/* Status dot */}
+                <div className={`w-4 h-4 ${getStatusDotColor()} rounded-full mb-4`} title={getStatusText()} />
+
+                {/* Panel icon */}
+                <div className={`w-8 h-8 bg-gradient-to-br ${getStatusColor()} rounded-lg flex items-center justify-center mb-4`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                    </svg>
+                </div>
+
+                {/* Vertical label */}
+                <div className="flex-1 flex items-center">
+                    <span
+                        className="text-xs font-semibold text-slate-400 whitespace-nowrap"
+                        style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
+                    >
+                        Panel Status
+                    </span>
+                </div>
+            </div>
+        );
+    }
+
+    // Expanded view - full content
     return (
         <div className="flex-1 flex flex-col text-white overflow-hidden">
             {/* Header */}
@@ -53,10 +104,20 @@ export default function PanelSidebar({
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
                         </svg>
                     </div>
-                    <div>
+                    <div className="flex-1">
                         <h2 className="text-sm font-semibold">Panel Status</h2>
                         <p className="text-xs text-slate-400">{getStatusText()}</p>
                     </div>
+                    {/* Collapse button */}
+                    <button
+                        onClick={onToggleCollapse}
+                        className="w-6 h-6 bg-slate-700 hover:bg-slate-600 rounded flex items-center justify-center transition-colors"
+                        title="Collapse Panel Status"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
                 </div>
             </div>
 
@@ -106,3 +167,4 @@ export default function PanelSidebar({
         </div>
     );
 }
+

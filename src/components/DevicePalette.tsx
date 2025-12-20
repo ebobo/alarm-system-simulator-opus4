@@ -148,9 +148,50 @@ function DraggableDeviceItem({ deviceType }: DraggableDeviceItemProps) {
 /**
  * Right-side panel containing draggable device palette
  */
-export default function DevicePalette() {
+interface DevicePaletteProps {
+    isCollapsed: boolean;
+    onToggleCollapse: () => void;
+}
+
+export default function DevicePalette({ isCollapsed, onToggleCollapse }: DevicePaletteProps) {
     const deviceTypes = Object.values(DEVICE_TYPES);
 
+    // Collapsed view - narrow strip with icon and vertical label
+    if (isCollapsed) {
+        return (
+            <div className="flex-1 flex flex-col items-center py-4 text-white overflow-hidden">
+                {/* Expand button at top */}
+                <button
+                    onClick={onToggleCollapse}
+                    className="w-8 h-8 mb-4 bg-slate-700 hover:bg-slate-600 rounded-lg flex items-center justify-center transition-colors"
+                    title="Expand Device Palette"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+
+                {/* Grid icon */}
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                    </svg>
+                </div>
+
+                {/* Vertical label */}
+                <div className="flex-1 flex items-center">
+                    <span
+                        className="text-xs font-semibold text-slate-400 whitespace-nowrap"
+                        style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
+                    >
+                        Device Palette
+                    </span>
+                </div>
+            </div>
+        );
+    }
+
+    // Expanded view - full content
     return (
         <div className="flex-1 flex flex-col text-white overflow-hidden">
             {/* Header */}
@@ -172,10 +213,20 @@ export default function DevicePalette() {
                             />
                         </svg>
                     </div>
-                    <div>
+                    <div className="flex-1">
                         <h2 className="text-sm font-semibold">Device Palette</h2>
                         <p className="text-xs text-slate-400">Drag to floor plan</p>
                     </div>
+                    {/* Collapse button */}
+                    <button
+                        onClick={onToggleCollapse}
+                        className="w-6 h-6 bg-slate-700 hover:bg-slate-600 rounded flex items-center justify-center transition-colors"
+                        title="Collapse Device Palette"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
                 </div>
             </div>
 

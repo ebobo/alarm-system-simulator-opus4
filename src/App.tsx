@@ -157,6 +157,10 @@ function App() {
   // Panel sidebar tab state (persisted across view changes)
   const [panelSidebarTab, setPanelSidebarTab] = useState<'modules' | 'config'>('modules');
 
+  // Sidebar collapse states
+  const [isDevicePaletteCollapsed, setIsDevicePaletteCollapsed] = useState(false);
+  const [isPanelSidebarCollapsed, setIsPanelSidebarCollapsed] = useState(false);
+
   // Store discovered devices in state - only updates when Raise Loop is clicked
   const [discoveredDevicesMap, setDiscoveredDevicesMap] = useState<Map<string, { cAddress: number; discoveredFrom: 'out' | 'in' }>>(new Map());
 
@@ -821,7 +825,7 @@ function App() {
       onDragEnd={handleDragEnd}
     >
       <div
-        className="h-screen flex bg-gray-100"
+        className="h-screen flex bg-gray-100 overflow-x-hidden"
         ref={containerRef}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -956,41 +960,46 @@ function App() {
 
         {/* Right Sidebar - Device Palette and Property Panel (only show in floor plan view) */}
         {activeView === 'floorplan' && (
-          <div className="w-80 flex flex-col bg-gradient-to-b from-slate-800 to-slate-900 border-l border-slate-700">
+          <div className={`${isDevicePaletteCollapsed ? 'w-12' : 'w-80'} flex flex-col bg-gradient-to-b from-slate-800 to-slate-900 border-l border-slate-700 transition-all duration-200`}>
             <div className="flex-1 overflow-hidden">
-              <DevicePalette />
+              <DevicePalette
+                isCollapsed={isDevicePaletteCollapsed}
+                onToggleCollapse={() => setIsDevicePaletteCollapsed(prev => !prev)}
+              />
             </div>
-            <DevicePropertyPanel
-              selectedDevice={placedDevices.find(d => d.instanceId === selectedDeviceId) || null}
-              selectedWire={connections.find(c => c.id === selectedWireId) || null}
-              selectedRoom={selectedRoom}
-              floorPlanInfo={{
-                name: currentProjectName,
-                rooms: { offices: config.offices, meetingRooms: config.meetingRooms, toilets: config.toilets },
-                deviceCount: placedDevices.length,
-                wireCount: connections.length,
-              }}
-              onUpdateDevice={handleUpdateDevice}
-              onDeleteWire={(wireId) => {
-                setConnections(prev => prev.filter(c => c.id !== wireId));
-                setSelectedWireId(null);
-              }}
-              onDeleteDevice={(deviceId) => {
-                // Remove all connections to/from this device
-                setConnections(prev => prev.filter(c =>
-                  c.fromDeviceId !== deviceId && c.toDeviceId !== deviceId
-                ));
-                // Remove the device
-                setPlacedDevices(prev => prev.filter(d => d.instanceId !== deviceId));
-                setSelectedDeviceId(null);
-              }}
-            />
+            {!isDevicePaletteCollapsed && (
+              <DevicePropertyPanel
+                selectedDevice={placedDevices.find(d => d.instanceId === selectedDeviceId) || null}
+                selectedWire={connections.find(c => c.id === selectedWireId) || null}
+                selectedRoom={selectedRoom}
+                floorPlanInfo={{
+                  name: currentProjectName,
+                  rooms: { offices: config.offices, meetingRooms: config.meetingRooms, toilets: config.toilets },
+                  deviceCount: placedDevices.length,
+                  wireCount: connections.length,
+                }}
+                onUpdateDevice={handleUpdateDevice}
+                onDeleteWire={(wireId) => {
+                  setConnections(prev => prev.filter(c => c.id !== wireId));
+                  setSelectedWireId(null);
+                }}
+                onDeleteDevice={(deviceId) => {
+                  // Remove all connections to/from this device
+                  setConnections(prev => prev.filter(c =>
+                    c.fromDeviceId !== deviceId && c.toDeviceId !== deviceId
+                  ));
+                  // Remove the device
+                  setPlacedDevices(prev => prev.filter(d => d.instanceId !== deviceId));
+                  setSelectedDeviceId(null);
+                }}
+              />
+            )}
           </div>
         )}
 
         {/* Right Sidebar - Panel Status (only show in panel view) */}
         {activeView === 'panel' && (
-          <div className="w-80 flex flex-col bg-gradient-to-b from-slate-800 to-slate-900 border-l border-slate-700">
+          <div className={`${isPanelSidebarCollapsed ? 'w-12' : 'w-80'} flex flex-col bg-gradient-to-b from-slate-800 to-slate-900 border-l border-slate-700 transition-all duration-200`}>
             <PanelSidebar
               config={loadedConfig}
               matchResult={panelDeviceMatch}
@@ -998,6 +1007,8 @@ function App() {
               modules={panelModules}
               activeTab={panelSidebarTab}
               onTabChange={setPanelSidebarTab}
+              isCollapsed={isPanelSidebarCollapsed}
+              onToggleCollapse={() => setIsPanelSidebarCollapsed(prev => !prev)}
             />
           </div>
         )}
