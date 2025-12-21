@@ -20,6 +20,7 @@ import { saveProject, loadProject, deleteProject, getProjectList, generateProjec
 import { exportToExcel, exportSVG } from './utils/excelExport';
 import { deriveModulesFromFloorPlan } from './utils/moduleUtils';
 import { validateDeviceMatch } from './utils/faconfigParser';
+import { computeActivatedSounders } from './utils/simulationEngine';
 import type { RoomConfig } from './utils/floorPlanGenerator';
 import type { PlacedDevice, ViewportTransform, Connection, DrawingWire, RoomInfo } from './types/devices';
 import type { ProjectListEntry } from './types/storage';
@@ -237,6 +238,12 @@ function App() {
     if (!loadedConfig || !isPanelPoweredOn) return null;
     return validateDeviceMatch(loadedConfig, placedDevices);
   }, [loadedConfig, placedDevices, isPanelPoweredOn]);
+
+  // Computed: activated sounders based on C&E rules
+  // When detectors/MCPs are activated, this computes which sounders should also activate
+  const activatedSounders = useMemo(() => {
+    return computeActivatedSounders(loadedConfig, placedDevices, activatedDevices);
+  }, [loadedConfig, placedDevices, activatedDevices]);
 
   // Sync discovered cAddress back to PlacedDevice when discovery completes
   // This allows the property panel to display the assigned address
@@ -1194,6 +1201,7 @@ function App() {
               placedDevices={placedDevices}
               selectedDeviceId={selectedDeviceId}
               activatedDevices={activatedDevices}
+              activatedSounders={activatedSounders}
               onDeviceClick={handleDeviceClick}
               onFloorPlanClick={handleFloorPlanClick}
             />

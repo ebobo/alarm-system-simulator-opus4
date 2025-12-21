@@ -10,6 +10,7 @@ interface SimulationViewProps {
     placedDevices: PlacedDevice[];
     selectedDeviceId: string | null;
     activatedDevices: Set<string>;
+    activatedSounders: Set<string>;
     onDeviceClick: (deviceId: string) => void;
     onFloorPlanClick: () => void;
 }
@@ -58,6 +59,7 @@ export default function SimulationView({
     placedDevices,
     selectedDeviceId,
     activatedDevices,
+    activatedSounders,
     onDeviceClick,
     onFloorPlanClick,
 }: SimulationViewProps) {
@@ -129,9 +131,22 @@ export default function SimulationView({
                     devices={placedDevices}
                     selectedDeviceId={selectedDeviceId}
                     activatedDevices={activatedDevices}
+                    activatedSounders={activatedSounders}
                     viewportTransform={viewportTransform}
                     onDeviceClick={onDeviceClick}
                 />
+
+                {/* Alarm Status Banner - shows when sounders are active */}
+                {activatedSounders.size > 0 && (
+                    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 px-4 py-2 bg-red-600 rounded-lg shadow-lg animate-pulse">
+                        <div className="flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15.536a5 5 0 001.414 1.414m2.828-9.9a9 9 0 0112.728 0" />
+                            </svg>
+                            <span className="text-white text-sm font-semibold">ALARM ACTIVE - {activatedSounders.size} Sounder{activatedSounders.size !== 1 ? 's' : ''}</span>
+                        </div>
+                    </div>
+                )}
 
                 {/* Instructions */}
                 <div className="absolute bottom-4 left-4 z-10 px-3 py-2 bg-slate-800/90 rounded-lg shadow-md">

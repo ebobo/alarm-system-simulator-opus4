@@ -6,6 +6,7 @@ interface SimulationDeviceOverlayProps {
     devices: PlacedDevice[];
     selectedDeviceId?: string | null;
     activatedDevices: Set<string>;
+    activatedSounders: Set<string>;
     viewportTransform: ViewportTransform;
     onDeviceClick?: (instanceId: string) => void;
 }
@@ -242,6 +243,7 @@ export default function SimulationDeviceOverlay({
     devices,
     selectedDeviceId,
     activatedDevices,
+    activatedSounders,
     viewportTransform,
     onDeviceClick,
 }: SimulationDeviceOverlayProps) {
@@ -297,7 +299,10 @@ export default function SimulationDeviceOverlay({
                 })
                 .map((device) => {
                     const isSelected = device.instanceId === selectedDeviceId;
-                    const isActivated = activatedDevices.has(device.instanceId);
+                    // For sounders, check activatedSounders; for detectors/MCPs, check activatedDevices
+                    const isActivated = device.typeId === 'sounder'
+                        ? activatedSounders.has(device.instanceId)
+                        : activatedDevices.has(device.instanceId);
 
                     return (
                         <div key={device.instanceId} style={{ pointerEvents: 'auto' }}>
