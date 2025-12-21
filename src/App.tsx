@@ -14,6 +14,7 @@ import { generateFloorPlan, defaultConfig } from './utils/floorPlanGenerator';
 import { useCoordinates } from './hooks/useCoordinates';
 import { generateInstanceId, generateSerialNumber, getDeviceType } from './types/devices';
 import DevicePropertyPanel from './components/DevicePropertyPanel';
+import FloatingContainer from './components/FloatingContainer';
 import { saveProject, loadProject, deleteProject, getProjectList, generateProjectId, getMostRecentProject } from './utils/storage';
 import { exportToExcel, exportSVG } from './utils/excelExport';
 import { deriveModulesFromFloorPlan } from './utils/moduleUtils';
@@ -182,6 +183,10 @@ function App() {
   // Config tab section collapse states (persisted across tab switches)
   const [isConfigDevicesCollapsed, setIsConfigDevicesCollapsed] = useState(false);
   const [isConfigZonesCollapsed, setIsConfigZonesCollapsed] = useState(true); // Default collapsed
+
+  // Floating property panel state
+  const [isPropertyPanelFloating, setIsPropertyPanelFloating] = useState(false);
+  const [propertyPanelPosition, setPropertyPanelPosition] = useState({ x: 100, y: 100 });
 
   // Store discovered devices in state - only updates when Raise Loop is clicked
   const [discoveredDevicesMap, setDiscoveredDevicesMap] = useState<Map<string, { cAddress: number; discoveredFrom: 'out' | 'in' }>>(new Map());
@@ -1207,7 +1212,87 @@ function App() {
               floorPlanProjectName={currentProjectName}
             />
           </div>
-          {!isUnifiedSidebarCollapsed && unifiedSidebarTab === 'devices' && (
+          {/* Docked Property Panel - only when not floating */}
+          {!isUnifiedSidebarCollapsed && !isPropertyPanelFloating && activeView === 'floorplan' && (
+            <div className="border-t border-slate-700">
+              {/* Undock button header */}
+              <div className="flex items-center justify-between px-3 py-2 bg-slate-700/50">
+                <span className="text-xs font-medium text-slate-300">Properties</span>
+                <button
+                  onClick={() => setIsPropertyPanelFloating(true)}
+                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-600 transition-colors"
+                  title="Undock to floating window"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </button>
+              </div>
+              <DevicePropertyPanel
+                selectedDevice={placedDevices.find(d => d.instanceId === selectedDeviceId) || null}
+                allDevices={placedDevices}
+                selectedWire={connections.find(c => c.id === selectedWireId) || null}
+                selectedRoom={selectedRoom}
+                floorPlanInfo={{
+                  name: currentProjectName,
+                  rooms: { offices: config.offices, meetingRooms: config.meetingRooms, toilets: config.toilets },
+                  deviceCount: placedDevices.length,
+                  wireCount: connections.length,
+                }}
+                onUpdateDevice={handleUpdateDevice}
+                onDeleteWire={(wireId) => {
+                  setConnections(prev => prev.filter(c => c.id !== wireId));
+                  setSelectedWireId(null);
+                }}
+                onDeleteDevice={(deviceId) => {
+                  // Remove all connections to/from this device
+                  setConnections(prev => prev.filter(c =>
+                    c.fromDeviceId !== deviceId && c.toDeviceId !== deviceId
+                  ));
+                  // Remove the device
+                  setPlacedDevices(prev => prev.filter(d => d.instanceId !== deviceId));
+                  setSelectedDeviceId(null);
+                }}
+                onRemoveDetector={(detectorId, socketId) => {
+                  // Find the socket to get its position
+                  const socket = placedDevices.find(d => d.instanceId === socketId);
+                  if (!socket) return;
+
+                  // Update devices: clear mountedDetectorId from socket, move detector next to socket
+                  setPlacedDevices(prev => prev.map(dev => {
+                    if (dev.instanceId === socketId) {
+                      // Clear mounted detector reference from socket
+                      return { ...dev, mountedDetectorId: undefined };
+                    }
+                    if (dev.instanceId === detectorId) {
+                      // Move detector next to socket (e.g. +40px x)
+                      return {
+                        ...dev,
+                        x: socket.x + 40,
+                        y: socket.y,
+                        mountedOnSocketId: undefined,
+                        deviceType: 'AG Head' // Revert to AG Head
+                      };
+                    }
+                    return dev;
+                  }));
+
+                  // Keep the detector selected
+                  setSelectedDeviceId(detectorId);
+                }}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Floating Property Panel - shows when floating and in floorplan view */}
+        {isPropertyPanelFloating && activeView === 'floorplan' && (
+          <FloatingContainer
+            position={propertyPanelPosition}
+            onPositionChange={setPropertyPanelPosition}
+            onDock={() => setIsPropertyPanelFloating(false)}
+            title="Device Properties"
+          >
             <DevicePropertyPanel
               selectedDevice={placedDevices.find(d => d.instanceId === selectedDeviceId) || null}
               allDevices={placedDevices}
@@ -1261,8 +1346,8 @@ function App() {
                 setSelectedDeviceId(detectorId);
               }}
             />
-          )}
-        </div>
+          </FloatingContainer>
+        )}
 
         {/* Config Modal */}
         <ConfigModal
