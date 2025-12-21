@@ -242,18 +242,28 @@ function WallWithGap({
 
     // Material for walls
     const wallMaterial = <meshStandardMaterial color="#FFFFFF" roughness={0.5} />;
+    const capMaterial = <meshStandardMaterial color="#1a1a1a" roughness={0.8} />;
+
+    // Helper to render wall segment with cap
+    const WallSegment = ({ length, x, z, angle }: { length: number, x: number, z: number, angle: number }) => (
+        <group position={[x, WALL_HEIGHT / 2, z]} rotation={[0, -angle, 0]}>
+            <mesh castShadow receiveShadow>
+                <boxGeometry args={[length, WALL_HEIGHT, WALL_THICKNESS]} />
+                {wallMaterial}
+            </mesh>
+            {/* Black Cap */}
+            <mesh position={[0, WALL_HEIGHT / 2 + 0.01, 0]}>
+                <boxGeometry args={[length, 0.05, WALL_THICKNESS]} />
+                {capMaterial}
+            </mesh>
+        </group>
+    );
 
     // If no gap, render single wall
     if (gapStart === undefined || gapEnd === undefined) {
         const centerX = (startX + endX) / 2;
         const centerZ = (startZ + endZ) / 2;
-
-        return (
-            <mesh position={[centerX, WALL_HEIGHT / 2, centerZ]} rotation={[0, -angle, 0]} castShadow receiveShadow>
-                <boxGeometry args={[length, WALL_HEIGHT, WALL_THICKNESS]} />
-                {wallMaterial}
-            </mesh>
-        );
+        return <WallSegment length={length} x={centerX} z={centerZ} angle={angle} />;
     }
 
     // Render wall with gap
@@ -265,13 +275,7 @@ function WallWithGap({
         const seg1Length = gapStart;
         const seg1CenterX = startX + (Math.cos(angle) * seg1Length / 2);
         const seg1CenterZ = startZ + (Math.sin(angle) * seg1Length / 2);
-
-        segments.push(
-            <mesh key="seg1" position={[seg1CenterX, WALL_HEIGHT / 2, seg1CenterZ]} rotation={[0, -angle, 0]} castShadow receiveShadow>
-                <boxGeometry args={[seg1Length, WALL_HEIGHT, WALL_THICKNESS]} />
-                {wallMaterial}
-            </mesh>
-        );
+        segments.push(<WallSegment key="seg1" length={seg1Length} x={seg1CenterX} z={seg1CenterZ} angle={angle} />);
     }
 
     if (gapEndNorm < 0.99) {
@@ -280,13 +284,7 @@ function WallWithGap({
         const seg2StartZ = startZ + (Math.sin(angle) * gapEnd);
         const seg2CenterX = seg2StartX + (Math.cos(angle) * seg2Length / 2);
         const seg2CenterZ = seg2StartZ + (Math.sin(angle) * seg2Length / 2);
-
-        segments.push(
-            <mesh key="seg2" position={[seg2CenterX, WALL_HEIGHT / 2, seg2CenterZ]} rotation={[0, -angle, 0]} castShadow receiveShadow>
-                <boxGeometry args={[seg2Length, WALL_HEIGHT, WALL_THICKNESS]} />
-                {wallMaterial}
-            </mesh>
-        );
+        segments.push(<WallSegment key="seg2" length={seg2Length} x={seg2CenterX} z={seg2CenterZ} angle={angle} />);
     }
 
     // Header above door
@@ -296,10 +294,17 @@ function WallWithGap({
         const gapCenterZ = startZ + (Math.sin(angle) * (gapStart + gapEnd) / 2);
 
         segments.push(
-            <mesh key="doorTop" position={[gapCenterX, DOOR_HEIGHT + doorTopHeight / 2, gapCenterZ]} rotation={[0, -angle, 0]} castShadow receiveShadow>
-                <boxGeometry args={[gapEnd - gapStart, doorTopHeight, WALL_THICKNESS]} />
-                {wallMaterial}
-            </mesh>
+            <group key="doorTop" position={[gapCenterX, DOOR_HEIGHT + doorTopHeight / 2, gapCenterZ]} rotation={[0, -angle, 0]}>
+                <mesh castShadow receiveShadow>
+                    <boxGeometry args={[gapEnd - gapStart, doorTopHeight, WALL_THICKNESS]} />
+                    {wallMaterial}
+                </mesh>
+                {/* Black Cap for door header */}
+                <mesh position={[0, doorTopHeight / 2 + 0.01, 0]}>
+                    <boxGeometry args={[gapEnd - gapStart, 0.05, WALL_THICKNESS]} />
+                    {capMaterial}
+                </mesh>
+            </group>
         );
     }
 
@@ -391,6 +396,68 @@ function Room3D({ room }: { room: RoomData }) {
     );
 }
 
+// Helper to find nearest wall for device
+const snapToWall = (x: number, y: number, rooms: RoomData[]) => {
+    let nearestDist = Infinity;
+    let newX = x;
+    let newY = y;
+    let rotation = 0;
+
+    const SNAP_DIST = 40; // Pixel distance to snap
+
+    rooms.forEach(room => {
+        // Left wall
+        if (Math.abs(x - room.x) < SNAP_DIST && y >= room.y && y <= room.y + room.height) {
+            if (Math.abs(x - room.x) < nearestDist) {
+                nearestDist = Math.abs(x - room.x);
+                newX = room.x;
+                newY = y;
+                rotation = -Math.PI / 2; // Face right
+            }
+        }
+        // Right wall
+        if (Math.abs(x - (room.x + room.width)) < SNAP_DIST && y >= room.y && y <= room.y + room.height) {
+            if (Math.abs(x - (room.x + room.width)) < nearestDist) {
+                nearestDist = Math.abs(x - (room.x + room.width));
+                newX = room.x + room.width;
+                newY = y;
+                rotation = Math.PI / 2; // Face left
+            }
+        }
+        // Top wall
+        if (Math.abs(y - room.y) < SNAP_DIST && x >= room.x && x <= room.x + room.width) {
+            if (Math.abs(y - room.y) < nearestDist) {
+                nearestDist = Math.abs(y - room.y);
+                newX = x;
+                newY = room.y;
+                rotation = Math.PI; // Face down
+            }
+        }
+        // Bottom wall
+        if (Math.abs(y - (room.y + room.height)) < SNAP_DIST && x >= room.x && x <= room.x + room.width) {
+            if (Math.abs(y - (room.y + room.height)) < nearestDist) {
+                nearestDist = Math.abs(y - (room.y + room.height));
+                newX = x;
+                newY = room.y + room.height;
+                rotation = 0; // Face up
+            }
+        }
+    });
+
+    if (nearestDist < SNAP_DIST) {
+        // Push slightly into room to avoid z-fighting with wall
+        const offset = 2.0; // 2 units in 3D scale (approx)
+        if (rotation === 0) newY -= offset;
+        if (rotation === Math.PI) newY += offset;
+        if (rotation === Math.PI / 2) newX -= offset;
+        if (rotation === -Math.PI / 2) newX += offset;
+
+        return { x: newX, y: newY, rotation, isWall: true };
+    }
+
+    return { x, y, rotation: 0, isWall: false };
+};
+
 // --- Devices (Refined) ---
 
 function Detector3D({ x, y, isActivated, onClick }: { x: number; y: number; isActivated: boolean; onClick?: () => void }) {
@@ -424,28 +491,65 @@ function Detector3D({ x, y, isActivated, onClick }: { x: number; y: number; isAc
 }
 
 // ... (Sounder3D and MCP3D simplified for brevity but assume similar refinement)
-function Sounder3D({ x, y, isActivated, onClick }: { x: number; y: number; isActivated: boolean; onClick?: () => void }) {
-    // Wall mounted sounder
+function Sounder3D({ x, y, isActivated, onClick, rooms }: { x: number; y: number; isActivated: boolean; onClick?: () => void, rooms: RoomData[] }) {
+    const { x: finalX, y: finalY, rotation, isWall } = useMemo(() => snapToWall(x, y, rooms), [x, y, rooms]);
+    const groupRef = useRef<THREE.Group>(null);
+
+    useFrame((state) => {
+        if (groupRef.current && isActivated) {
+            // Pulse animation
+            const scale = 1 + Math.sin(state.clock.elapsedTime * 10) * 0.1;
+            groupRef.current.scale.setScalar(scale);
+        } else if (groupRef.current) {
+            groupRef.current.scale.setScalar(1);
+        }
+    });
+
     return (
-        <group position={[x * SCALE, WALL_HEIGHT * 0.7, y * SCALE]}>
+        <group
+            ref={groupRef}
+            position={[finalX * SCALE, isWall ? WALL_HEIGHT * 0.7 : WALL_HEIGHT * 0.7, finalY * SCALE]}
+            rotation={[0, rotation + Math.PI, 0]} // Face outward from wall
+        >
             <mesh onClick={onClick} rotation={[Math.PI / 2, 0, 0]}>
                 <cylinderGeometry args={[1.2, 1.4, 1.0, 32]} />
                 <meshStandardMaterial color={isActivated ? '#ef4444' : '#f97316'} roughness={0.2} />
+            </mesh>
+            {/* Grill */}
+            <mesh position={[0, 0, 0.51]} rotation={[0, 0, Math.PI / 4]}>
+                <boxGeometry args={[1.8, 0.2, 0.1]} />
+                <meshStandardMaterial color="#c2410c" />
+            </mesh>
+            <mesh position={[0, 0, 0.51]} rotation={[0, 0, -Math.PI / 4]}>
+                <boxGeometry args={[1.8, 0.2, 0.1]} />
+                <meshStandardMaterial color="#c2410c" />
             </mesh>
             {isActivated && <pointLight color="#FF0000" intensity={2} distance={15} />}
         </group>
     )
 }
 
-function MCP3D({ x, y, isActivated, onClick }: { x: number; y: number; isActivated: boolean; onClick?: () => void }) {
+function MCP3D({ x, y, isActivated, onClick, rooms }: { x: number; y: number; isActivated: boolean; onClick?: () => void, rooms: RoomData[] }) {
+    const { x: finalX, y: finalY, rotation, isWall } = useMemo(() => snapToWall(x, y, rooms), [x, y, rooms]);
+
     return (
-        <group position={[x * SCALE, WALL_HEIGHT * 0.4, y * SCALE]}>
+        <group
+            position={[finalX * SCALE, isWall ? WALL_HEIGHT * 0.4 : WALL_HEIGHT * 0.4, finalY * SCALE]}
+            rotation={[0, rotation, 0]}
+        >
+            {/* Mounting Box */}
+            <mesh position={[0, 0, -0.3]}>
+                <boxGeometry args={[2, 2.5, 0.5]} />
+                <meshStandardMaterial color="#991b1b" />
+            </mesh>
+            {/* Main Body */}
             <mesh onClick={onClick}>
-                <boxGeometry args={[1.8, 1.8, 0.5]} />
+                <boxGeometry args={[1.8, 2.2, 0.5]} />
                 <meshStandardMaterial color="#dc2626" roughness={0.3} />
             </mesh>
-            <mesh position={[0, 0, 0.3]}>
-                <boxGeometry args={[0.8, 0.8, 0.1]} />
+            {/* White Element */}
+            <mesh position={[0, 0, 0.26]}>
+                <boxGeometry args={[0.8, 0.8, 0.05]} />
                 <meshStandardMaterial color={isActivated ? '#FFFF00' : '#FFFFFF'} />
             </mesh>
         </group>
@@ -556,10 +660,10 @@ function Scene({ svgContent, placedDevices, activatedDevices, activatedSounders,
                 <Detector3D key={d.instanceId} x={d.x} y={d.y} isActivated={activatedDevices.has(d.instanceId)} onClick={() => onDeviceClick?.(d.instanceId)} />
             ))}
             {sounders.map(d => (
-                <Sounder3D key={d.instanceId} x={d.x} y={d.y} isActivated={activatedSounders.has(d.instanceId)} onClick={() => onDeviceClick?.(d.instanceId)} />
+                <Sounder3D key={d.instanceId} x={d.x} y={d.y} isActivated={activatedSounders.has(d.instanceId)} onClick={() => onDeviceClick?.(d.instanceId)} rooms={rooms} />
             ))}
             {mcps.map(d => (
-                <MCP3D key={d.instanceId} x={d.x} y={d.y} isActivated={activatedDevices.has(d.instanceId)} onClick={() => onDeviceClick?.(d.instanceId)} />
+                <MCP3D key={d.instanceId} x={d.x} y={d.y} isActivated={activatedDevices.has(d.instanceId)} onClick={() => onDeviceClick?.(d.instanceId)} rooms={rooms} />
             ))}
 
             <OrbitControls makeDefault minPolarAngle={0.1} maxPolarAngle={Math.PI / 2.1} minDistance={10} maxDistance={150} target={[centerX, 0, centerZ]} />
