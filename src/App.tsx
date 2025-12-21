@@ -166,6 +166,11 @@ function App() {
   // Simulation state - activated devices
   const [activatedDevices, setActivatedDevices] = useState<Set<string>>(new Set());
 
+  // System alarm state - persists until RESET is pressed on panel
+  const [isSystemAlarm, setIsSystemAlarm] = useState(false);
+  const [alarmTriggerInfo, setAlarmTriggerInfo] = useState<{ deviceLabel: string; zoneName: string } | null>(null);
+  const [persistentSounders, setPersistentSounders] = useState<Set<string>>(new Set());
+
   // Loaded config for panel simulation
   const [loadedConfig, setLoadedConfig] = useState<FAConfig | null>(null);
   const [configImportError, setConfigImportError] = useState<string | null>(null);
@@ -244,6 +249,42 @@ function App() {
   const activatedSounders = useMemo(() => {
     return computeActivatedSounders(loadedConfig, placedDevices, activatedDevices);
   }, [loadedConfig, placedDevices, activatedDevices]);
+
+  // Effect: Trigger system alarm and persist sounders state
+  useEffect(() => {
+    if (activatedSounders.size > 0) {
+      // Add new sounders to persistent set (they stay until RESET)
+      setPersistentSounders(prev => {
+        const updated = new Set(prev);
+        activatedSounders.forEach(id => updated.add(id));
+        return updated;
+      });
+
+      // Trigger alarm if not already active
+      if (!isSystemAlarm) {
+        // Find the first activated device to show in alarm info
+        const firstActivatedId = Array.from(activatedDevices)[0];
+        const firstDevice = placedDevices.find(d => d.instanceId === firstActivatedId);
+
+        // Get location from config if available
+        const configDevice = loadedConfig?.devices.find(d => d.address === firstDevice?.label);
+
+        setIsSystemAlarm(true);
+        setAlarmTriggerInfo(firstDevice ? {
+          deviceLabel: firstDevice.label || 'Unknown device',
+          zoneName: configDevice?.location || 'Unknown location'
+        } : null);
+      }
+    }
+  }, [activatedSounders, activatedDevices, placedDevices, isSystemAlarm, loadedConfig]);
+
+  // Handle alarm reset from panel
+  const handleAlarmReset = useCallback(() => {
+    setIsSystemAlarm(false);
+    setAlarmTriggerInfo(null);
+    setActivatedDevices(new Set());
+    setPersistentSounders(new Set());  // Clear persistent sounders only on reset
+  }, []);
 
   // Sync discovered cAddress back to PlacedDevice when discovery completes
   // This allows the property panel to display the assigned address
@@ -1201,7 +1242,7 @@ function App() {
               placedDevices={placedDevices}
               selectedDeviceId={selectedDeviceId}
               activatedDevices={activatedDevices}
-              activatedSounders={activatedSounders}
+              activatedSounders={persistentSounders}
               onDeviceClick={handleDeviceClick}
               onFloorPlanClick={handleFloorPlanClick}
             />
@@ -1224,6 +1265,10 @@ function App() {
               deviceMatch={panelDeviceMatch}
               discoveredDeviceCount={discoveredDevicesMap.size}
               hasLoopBreak={Array.from(discoveredDevicesMap.values()).some(d => d.discoveredFrom === 'in')}
+              isAlarm={isSystemAlarm}
+              alarmInfo={alarmTriggerInfo}
+              activatedSoundersCount={persistentSounders.size}
+              onReset={handleAlarmReset}
             />
           )}
         </div>

@@ -67,14 +67,14 @@ export default function ControlButtons({
                 <button
                     onClick={onReset}
                     disabled={disabled}
-                    className={`py-3 bg-red-600 rounded-lg text-white text-sm font-semibold shadow-lg transition-all ${baseButtonClass}`}
+                    className={`py-3 bg-green-600 rounded-lg text-white text-sm font-semibold shadow-lg transition-all ${baseButtonClass}`}
                 >
                     RESET
                 </button>
                 <button
                     onClick={onMute}
                     disabled={disabled}
-                    className={`py-3 bg-amber-600 rounded-lg text-white text-sm font-semibold shadow-lg transition-all ${baseButtonClass}`}
+                    className={`py-3 bg-red-600 rounded-lg text-white text-sm font-semibold shadow-lg transition-all ${baseButtonClass}`}
                 >
                     MUTE
                 </button>
@@ -88,7 +88,7 @@ export default function ControlButtons({
                 <button
                     onClick={onTest}
                     disabled={disabled}
-                    className={`py-3 bg-green-600 rounded-lg text-white text-sm font-semibold shadow-lg transition-all ${baseButtonClass}`}
+                    className={`py-3 bg-amber-600 rounded-lg text-white text-sm font-semibold shadow-lg transition-all ${baseButtonClass}`}
                 >
                     TEST
                 </button>

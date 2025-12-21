@@ -20,6 +20,11 @@ interface PanelViewProps {
     deviceMatch: DeviceMatchResult | null;
     discoveredDeviceCount: number;
     hasLoopBreak: boolean;
+    // Alarm state from simulation
+    isAlarm: boolean;
+    alarmInfo: { deviceLabel: string; zoneName: string } | null;
+    activatedSoundersCount: number;
+    onReset: () => void;
 }
 
 export default function PanelView({
@@ -32,7 +37,11 @@ export default function PanelView({
     onPowerChange,
     deviceMatch,
     discoveredDeviceCount,
-    hasLoopBreak
+    hasLoopBreak,
+    isAlarm,
+    alarmInfo,
+    activatedSoundersCount,
+    onReset
 }: PanelViewProps) {
 
     // Check if panel and loop driver exist
@@ -70,7 +79,7 @@ export default function PanelView({
     // LED state based on system status
     const ledState: LEDState = {
         power: true,
-        alarm: false,
+        alarm: isAlarm,  // Use alarm state from simulation
         fault: isFault,
         disabled: false,
         mute: false,
@@ -79,6 +88,20 @@ export default function PanelView({
 
     // LCD display content based on status
     const getLCDContent = () => {
+        // FIRE ALARM takes highest priority
+        if (isAlarm) {
+            return {
+                status: 'alarm' as const,
+                message: 'FIRE ALARM',
+                details: [
+                    alarmInfo ? `Device: ${alarmInfo.deviceLabel}` : 'Unknown trigger',
+                    alarmInfo ? `Location: ${alarmInfo.zoneName}` : '',
+                    `${activatedSoundersCount} sounder${activatedSoundersCount !== 1 ? 's' : ''} activated`,
+                ].filter(Boolean),
+                hint: 'Press RESET to clear alarm',
+            };
+        }
+
         // Hardware fault takes priority
         if (isHardwareFault) {
             return {
@@ -215,7 +238,10 @@ export default function PanelView({
 
                     {/* Control Buttons */}
                     <div className="mb-6">
-                        <ControlButtons disabled={true} />
+                        <ControlButtons
+                            disabled={!isAlarm}
+                            onReset={onReset}
+                        />
                     </div>
 
                     {/* Bottom Actions */}
