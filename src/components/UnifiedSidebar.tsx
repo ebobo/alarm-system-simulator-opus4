@@ -198,7 +198,7 @@ function DevicesTabContent() {
 
 interface UnifiedSidebarProps {
     // View state
-    activeView: 'floorplan' | 'panel';
+    activeView: 'floorplan' | 'panel' | 'simulation';
 
     // Tab state
     activeTab: UnifiedSidebarTab;
@@ -239,8 +239,8 @@ export default function UnifiedSidebar({
     floorPlanProjectName
 }: UnifiedSidebarProps) {
 
-    // Devices tab is disabled in panel view
-    const isDevicesDisabled = activeView === 'panel';
+    // Devices tab is disabled in panel and simulation views
+    const isDevicesDisabled = activeView === 'panel' || activeView === 'simulation';
 
     // Get status indicator color for header icon
     const getStatusColor = () => {

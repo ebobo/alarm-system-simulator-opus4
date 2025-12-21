@@ -22,6 +22,11 @@ interface DevicePropertyPanelProps {
     connections?: Connection[];
     hasConfig?: boolean;
     onRaiseLoop?: () => void;
+    // Simulation mode props
+    isSimulationMode?: boolean;
+    isDeviceActivated?: boolean;
+    onActivate?: (deviceId: string) => void;
+    onDeactivate?: (deviceId: string) => void;
 }
 
 // Format room type for display
@@ -55,7 +60,11 @@ export default function DevicePropertyPanel({
     allDevices = [],
     connections = [],
     hasConfig = false,
-    onRaiseLoop
+    onRaiseLoop,
+    isSimulationMode = false,
+    isDeviceActivated = false,
+    onActivate,
+    onDeactivate
 }: DevicePropertyPanelProps) {
     // Show room info when room is selected
     if (selectedRoom) {
@@ -181,7 +190,9 @@ export default function DevicePropertyPanel({
     const isPanel = selectedDevice.typeId === 'panel';
     const isAGHead = selectedDevice.typeId === 'AG-head';
     const isAGSocket = selectedDevice.typeId === 'AG-socket';
+    const isMCP = selectedDevice.typeId === 'mcp';
     const isMountedDetector = isAGSocket && !!selectedDevice.mountedDetectorId; // This represents a complete AG Detector
+    const isActivatable = isSimulationMode && (isAGSocket || isMCP);
 
     // Get the mounted head device if this is a socket with a detector
     const mountedHead = isMountedDetector && allDevices
@@ -453,34 +464,72 @@ export default function DevicePropertyPanel({
                 )}
 
                 {/* Action Button - Remove Detector for mounted detectors (Socket View), Delete for others */}
-                <div className="pt-3 border-t border-slate-700 mt-3">
-                    {isMountedDetector ? (
-                        <button
-                            onClick={() => onRemoveDetector?.(selectedDevice.mountedDetectorId!, selectedDevice.instanceId)}
-                            className="w-full bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold 
+                {/* Hidden in simulation mode */}
+                {!isSimulationMode && (
+                    <div className="pt-3 border-t border-slate-700 mt-3">
+                        {isMountedDetector ? (
+                            <button
+                                onClick={() => onRemoveDetector?.(selectedDevice.mountedDetectorId!, selectedDevice.instanceId)}
+                                className="w-full bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold 
                                        py-2 px-3 rounded transition-colors duration-200 flex items-center justify-center gap-2"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                            </svg>
-                            Remove Head
-                        </button>
-                    ) : (
-                        <button
-                            onClick={() => onDeleteDevice?.(selectedDevice.instanceId)}
-                            className="w-full bg-red-600 hover:bg-red-500 text-white text-xs font-semibold 
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                                Remove Head
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => onDeleteDevice?.(selectedDevice.instanceId)}
+                                className="w-full bg-red-600 hover:bg-red-500 text-white text-xs font-semibold 
                                        py-2 px-3 rounded transition-colors duration-200 flex items-center justify-center gap-2"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Delete Device
+                            </button>
+                        )}
+                        <p className="text-[10px] text-slate-500 text-center mt-1">
+                            {isMountedDetector ? 'Detector will be placed next to socket' : 'or press Delete key'}
+                        </p>
+                    </div>
+                )}
+
+                {/* Simulation Mode Activation Button */}
+                {isActivatable && (
+                    <div className="pt-3 border-t border-slate-700 mt-3">
+                        <button
+                            onClick={() => isDeviceActivated
+                                ? onDeactivate?.(selectedDevice.instanceId)
+                                : onActivate?.(selectedDevice.instanceId)
+                            }
+                            className={`w-full py-2.5 px-3 rounded text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2
+                                ${isDeviceActivated
+                                    ? 'bg-green-600 hover:bg-green-500 text-white'
+                                    : 'bg-red-600 hover:bg-red-500 text-white animate-pulse'}`}
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                            Delete Device
+                            {isDeviceActivated ? (
+                                <>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Deactivate Alarm
+                                </>
+                            ) : (
+                                <>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15.536a5 5 0 001.414 1.414m2.828-9.9a9 9 0 0112.728 0" />
+                                    </svg>
+                                    Activate Fire Alarm
+                                </>
+                            )}
                         </button>
-                    )}
-                    <p className="text-[10px] text-slate-500 text-center mt-1">
-                        {isMountedDetector ? 'Detector will be placed next to socket' : 'or press Delete key'}
-                    </p>
-                </div>
+                        <p className="text-[10px] text-slate-500 text-center mt-1">
+                            {isDeviceActivated ? 'Click to stop the alarm' : (isMCP ? 'Simulate breaking the glass' : 'Simulate smoke/heat detection')}
+                        </p>
+                    </div>
+                )}
             </div>
         </div>
     );

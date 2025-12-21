@@ -8,6 +8,7 @@ import ConfigModal from './components/ConfigModal';
 import SaveNameDialog from './components/SaveNameDialog';
 import ViewTabs from './components/ViewTabs';
 import PanelView from './views/PanelView';
+import SimulationView from './views/SimulationView';
 import UnifiedSidebar from './components/UnifiedSidebar';
 import type { UnifiedSidebarTab } from './components/UnifiedSidebar';
 import { generateFloorPlan, defaultConfig } from './utils/floorPlanGenerator';
@@ -159,7 +160,10 @@ function App() {
   const [currentProjectName, setCurrentProjectName] = useState('New Project');
 
   // View state
-  const [activeView, setActiveView] = useState<'floorplan' | 'panel'>('floorplan');
+  const [activeView, setActiveView] = useState<'floorplan' | 'panel' | 'simulation'>('floorplan');
+
+  // Simulation state - activated devices
+  const [activatedDevices, setActivatedDevices] = useState<Set<string>>(new Set());
 
   // Loaded config for panel simulation
   const [loadedConfig, setLoadedConfig] = useState<FAConfig | null>(null);
@@ -263,6 +267,13 @@ function App() {
   const isPanelEnabled = isProjectSaved && hasPanelDevice;
   const panelDisabledReason: 'no-panel' | 'not-saved' | undefined =
     !isProjectSaved ? 'not-saved' : !hasPanelDevice ? 'no-panel' : undefined;
+
+  // Check if simulation is enabled - requires saved project, loaded config, AND matching config
+  const hasConfigLoaded = loadedConfig !== null;
+  const hasConfigMatch = panelDeviceMatch?.valid ?? false;
+  const isSimulationEnabled = isProjectSaved && hasConfigLoaded && hasConfigMatch;
+  const simulationDisabledReason: 'no-config' | 'config-mismatch' | 'not-saved' | undefined =
+    !isProjectSaved ? 'not-saved' : !hasConfigLoaded ? 'no-config' : !hasConfigMatch ? 'config-mismatch' : undefined;
 
   // Projection position (where the device will land)
   const [projectionPosition, setProjectionPosition] = useState<{ x: number; y: number } | null>(null);
@@ -1090,6 +1101,8 @@ function App() {
                 }}
                 isPanelEnabled={isPanelEnabled}
                 panelDisabledReason={panelDisabledReason}
+                isSimulationEnabled={isSimulationEnabled}
+                simulationDisabledReason={simulationDisabledReason}
               />
               {activeView === 'floorplan' && (
                 <div>
@@ -1104,6 +1117,12 @@ function App() {
                 <div>
                   <h2 className="text-lg font-semibold text-gray-800">Panel Simulator</h2>
                   <p className="text-xs text-gray-500">{currentProjectName} - AutroSafe Panel</p>
+                </div>
+              )}
+              {activeView === 'simulation' && (
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-800">Simulation Mode</h2>
+                  <p className="text-xs text-gray-500">{currentProjectName} - Click devices to activate</p>
                 </div>
               )}
             </div>
@@ -1169,6 +1188,15 @@ function App() {
                 alignmentGuides={alignmentGuides}
               />
             </div>
+          ) : activeView === 'simulation' ? (
+            <SimulationView
+              svgContent={svgContent}
+              placedDevices={placedDevices}
+              selectedDeviceId={selectedDeviceId}
+              activatedDevices={activatedDevices}
+              onDeviceClick={handleDeviceClick}
+              onFloorPlanClick={handleFloorPlanClick}
+            />
           ) : (
             <PanelView
               projectName={currentProjectName}
@@ -1213,7 +1241,7 @@ function App() {
             />
           </div>
           {/* Docked Property Panel - only when not floating */}
-          {!isUnifiedSidebarCollapsed && !isPropertyPanelFloating && activeView === 'floorplan' && (
+          {!isUnifiedSidebarCollapsed && !isPropertyPanelFloating && (activeView === 'floorplan' || activeView === 'simulation') && (
             <div className="border-t border-slate-700">
               {/* Undock button header */}
               <div className="flex items-center justify-between px-3 py-2 bg-slate-700/50">
@@ -1288,13 +1316,23 @@ function App() {
                   setSaveNotification('Loop raised!');
                   setTimeout(() => setSaveNotification(null), 2000);
                 }}
+                isSimulationMode={activeView === 'simulation'}
+                isDeviceActivated={selectedDeviceId ? activatedDevices.has(selectedDeviceId) : false}
+                onActivate={(deviceId) => setActivatedDevices(prev => new Set(prev).add(deviceId))}
+                onDeactivate={(deviceId) => {
+                  setActivatedDevices(prev => {
+                    const next = new Set(prev);
+                    next.delete(deviceId);
+                    return next;
+                  });
+                }}
               />
             </div>
           )}
         </div>
 
-        {/* Floating Property Panel - shows when floating and in floorplan view */}
-        {isPropertyPanelFloating && activeView === 'floorplan' && (
+        {/* Floating Property Panel - shows when floating and in floorplan/simulation view */}
+        {isPropertyPanelFloating && (activeView === 'floorplan' || activeView === 'simulation') && (
           <FloatingContainer
             position={propertyPanelPosition}
             onPositionChange={setPropertyPanelPosition}
@@ -1360,6 +1398,16 @@ function App() {
                 setDiscoveryVersion(v => v + 1);
                 setSaveNotification('Loop raised!');
                 setTimeout(() => setSaveNotification(null), 2000);
+              }}
+              isSimulationMode={activeView === 'simulation'}
+              isDeviceActivated={selectedDeviceId ? activatedDevices.has(selectedDeviceId) : false}
+              onActivate={(deviceId) => setActivatedDevices(prev => new Set(prev).add(deviceId))}
+              onDeactivate={(deviceId) => {
+                setActivatedDevices(prev => {
+                  const next = new Set(prev);
+                  next.delete(deviceId);
+                  return next;
+                });
               }}
             />
           </FloatingContainer>

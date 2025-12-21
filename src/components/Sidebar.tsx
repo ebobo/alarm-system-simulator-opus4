@@ -8,7 +8,7 @@ interface SidebarProps {
     currentProjectId: string | null;
     currentProjectName: string;
     onSelectProject: (id: string) => void;
-    activeView: 'floorplan' | 'panel';
+    activeView: 'floorplan' | 'panel' | 'simulation';
     onImportConfig?: () => void;
     onExportConfig?: () => void;
     isCollapsed: boolean;
@@ -298,7 +298,7 @@ export default function Sidebar({
             {/* Footer */}
             <div className="p-4 border-t border-slate-700">
                 <p className="text-xs text-slate-500 text-center">
-                    {activeView === 'floorplan' ? 'Floor Plan Designer' : 'Panel Simulator'}
+                    {activeView === 'floorplan' ? 'Floor Plan Designer' : activeView === 'panel' ? 'Panel Simulator' : 'Simulation Mode'}
                 </p>
             </div>
         </div>
