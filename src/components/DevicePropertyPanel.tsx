@@ -18,6 +18,10 @@ interface DevicePropertyPanelProps {
     onDeleteDevice?: (deviceId: string) => void;
     onRemoveDetector?: (detectorId: string, socketId: string) => void;
     allDevices?: PlacedDevice[];
+    // Raise Loop button props
+    connections?: Connection[];
+    hasConfig?: boolean;
+    onRaiseLoop?: () => void;
 }
 
 // Format room type for display
@@ -48,7 +52,10 @@ export default function DevicePropertyPanel({
     onDeleteWire,
     onDeleteDevice,
     onRemoveDetector,
-    allDevices = []
+    allDevices = [],
+    connections = [],
+    hasConfig = false,
+    onRaiseLoop
 }: DevicePropertyPanelProps) {
     // Show room info when room is selected
     if (selectedRoom) {
@@ -230,6 +237,40 @@ export default function DevicePropertyPanel({
                                            placeholder:text-slate-500"
                             />
                         </div>
+
+                        {/* Raise Loop Button */}
+                        {(() => {
+                            const panelDevice = allDevices.find(d => d.typeId === 'panel');
+                            const isConnectedToPanel = panelDevice && connections.some(conn =>
+                                (conn.fromDeviceId === panelDevice.instanceId && conn.toDeviceId === selectedDevice.instanceId) ||
+                                (conn.toDeviceId === panelDevice.instanceId && conn.fromDeviceId === selectedDevice.instanceId)
+                            );
+                            const isEnabled = isConnectedToPanel && hasConfig;
+                            const hintText = !hasConfig ? 'Load config first' :
+                                !isConnectedToPanel ? 'Connect to Panel first' :
+                                    'Discover loop devices';
+
+                            return (
+                                <div className="pt-3 border-t border-slate-700 mt-3">
+                                    <button
+                                        onClick={onRaiseLoop}
+                                        disabled={!isEnabled}
+                                        className={`w-full py-2 px-3 rounded text-xs font-semibold transition-colors duration-200 flex items-center justify-center gap-2
+                                            ${isEnabled
+                                                ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                                                : 'bg-slate-600 text-slate-400 cursor-not-allowed'}`}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                        </svg>
+                                        Raise Loop
+                                    </button>
+                                    <p className="text-[10px] text-slate-500 text-center mt-1">
+                                        {hintText}
+                                    </p>
+                                </div>
+                            );
+                        })()}
                     </>
                 ) : isPanel ? (
                     /* Panel Properties - simpler, no Id/C_Address */

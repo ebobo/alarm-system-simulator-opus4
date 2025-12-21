@@ -21,8 +21,8 @@ export interface DiscoveredDevice {
 
 /**
  * Traverse from a specific terminal of the loop driver, discovering devices in order.
- * Returns devices in the order they are connected (for loop-out) or 
- * reverse order (for loop-in, since we're coming from the other end).
+ * Uses DFS to discover ALL connected devices including branch/spur connections.
+ * Returns devices in the order they are discovered.
  */
 function traverseFromTerminal(
     loopDriverId: string,
@@ -34,58 +34,82 @@ function traverseFromTerminal(
     const discovered: PlacedDevice[] = [];
     const visited = new Set<string>([loopDriverId]);
 
-    // Find connection from loop driver's specified terminal
-    let currentDeviceId = loopDriverId;
-    let currentTerminal: string = startTerminal;  // Starts as loop-out/in, then can be any terminal
+    /**
+     * DFS traversal from a device, exploring all connected terminals
+     * @param deviceId Current device being explored
+     * @param entryTerminal The terminal we entered through (null for starting device)
+     */
+    function dfs(deviceId: string, entryTerminal: string | null) {
+        // Find ALL connections from this device (except the entry terminal we came from)
+        const exitConnections = connections.filter(c => {
+            // Check if connection is from this device
+            const isFromDevice = c.fromDeviceId === deviceId;
+            const isToDevice = c.toDeviceId === deviceId;
 
-    // BFS/chain traversal from the starting terminal
-    while (true) {
-        // Find connection from current device's terminal
-        const connection = connections.find(c =>
-            (c.fromDeviceId === currentDeviceId && c.fromTerminalId === currentTerminal) ||
-            (c.toDeviceId === currentDeviceId && c.toTerminalId === currentTerminal)
-        );
+            if (!isFromDevice && !isToDevice) return false;
 
-        if (!connection) break;
+            // Skip the terminal we entered through
+            const terminalOnThisDevice = isFromDevice ? c.fromTerminalId : c.toTerminalId;
+            if (terminalOnThisDevice === entryTerminal) return false;
 
-        // Get the next device
-        const nextDeviceId = connection.fromDeviceId === currentDeviceId
-            ? connection.toDeviceId
-            : connection.fromDeviceId;
+            // Get the next device ID
+            const nextId = isFromDevice ? c.toDeviceId : c.fromDeviceId;
 
-        // Skip if already visited or already discovered from other direction
-        if (visited.has(nextDeviceId) || alreadyDiscovered.has(nextDeviceId)) break;
+            // Skip if already visited or already discovered from other direction
+            return !visited.has(nextId) && !alreadyDiscovered.has(nextId);
+        });
 
-        const nextDevice = placedDevices.find(d => d.instanceId === nextDeviceId);
-        if (!nextDevice) break;
+        // Visit each connected device (explores all branches)
+        for (const conn of exitConnections) {
+            const nextId = conn.fromDeviceId === deviceId ? conn.toDeviceId : conn.fromDeviceId;
+            const nextDevice = placedDevices.find(d => d.instanceId === nextId);
 
-        // Don't traverse through other loop drivers or panels
-        if (nextDevice.typeId === 'loop-driver' || nextDevice.typeId === 'panel') break;
+            // Skip if device not found
+            if (!nextDevice) continue;
 
-        // Add to discovered list
-        discovered.push(nextDevice);
-        visited.add(nextDeviceId);
+            // Don't traverse through other loop drivers or panels
+            if (nextDevice.typeId === 'loop-driver' || nextDevice.typeId === 'panel') continue;
 
-        // Find the exit terminal - the terminal that the connection came into
-        const entryTerminal = connection.fromDeviceId === currentDeviceId
-            ? connection.toTerminalId
-            : connection.fromTerminalId;
+            // Mark as visited and add to discovered list
+            visited.add(nextId);
+            discovered.push(nextDevice);
 
-        // Find connection exiting from a different terminal of this device
-        const exitConnection = connections.find(c =>
-            ((c.fromDeviceId === nextDeviceId && c.fromTerminalId !== entryTerminal) ||
-                (c.toDeviceId === nextDeviceId && c.toTerminalId !== entryTerminal)) &&
-            // Don't go back to already visited
-            !visited.has(c.fromDeviceId === nextDeviceId ? c.toDeviceId : c.fromDeviceId)
-        );
+            // Get the terminal we're entering the next device through
+            const nextEntryTerminal = conn.fromDeviceId === deviceId
+                ? conn.toTerminalId
+                : conn.fromTerminalId;
 
-        if (!exitConnection) break;
+            // Recursively explore all branches from this device
+            dfs(nextId, nextEntryTerminal);
+        }
+    }
 
-        // Move to next device
-        currentDeviceId = nextDeviceId;
-        currentTerminal = exitConnection.fromDeviceId === nextDeviceId
-            ? exitConnection.fromTerminalId
-            : exitConnection.toTerminalId;
+    // Find the initial connection from the loop driver's starting terminal
+    const initialConnection = connections.find(c =>
+        (c.fromDeviceId === loopDriverId && c.fromTerminalId === startTerminal) ||
+        (c.toDeviceId === loopDriverId && c.toTerminalId === startTerminal)
+    );
+
+    if (initialConnection) {
+        // Start DFS from the first connected device
+        const firstDeviceId = initialConnection.fromDeviceId === loopDriverId
+            ? initialConnection.toDeviceId
+            : initialConnection.fromDeviceId;
+
+        const firstDevice = placedDevices.find(d => d.instanceId === firstDeviceId);
+
+        if (firstDevice && firstDevice.typeId !== 'loop-driver' && firstDevice.typeId !== 'panel') {
+            visited.add(firstDeviceId);
+            discovered.push(firstDevice);
+
+            // Get entry terminal for first device
+            const firstEntryTerminal = initialConnection.fromDeviceId === loopDriverId
+                ? initialConnection.toTerminalId
+                : initialConnection.fromTerminalId;
+
+            // Start DFS exploration
+            dfs(firstDeviceId, firstEntryTerminal);
+        }
     }
 
     return discovered;

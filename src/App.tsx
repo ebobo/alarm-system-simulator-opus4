@@ -1280,6 +1280,14 @@ function App() {
                   // Keep the detector selected
                   setSelectedDeviceId(detectorId);
                 }}
+                connections={connections}
+                hasConfig={loadedConfig !== null}
+                onRaiseLoop={() => {
+                  setIsPanelPoweredOn(true);
+                  setDiscoveryVersion(v => v + 1);
+                  setSaveNotification('Loop raised!');
+                  setTimeout(() => setSaveNotification(null), 2000);
+                }}
               />
             </div>
           )}
@@ -1344,6 +1352,14 @@ function App() {
 
                 // Keep the detector selected
                 setSelectedDeviceId(detectorId);
+              }}
+              connections={connections}
+              hasConfig={loadedConfig !== null}
+              onRaiseLoop={() => {
+                setIsPanelPoweredOn(true);
+                setDiscoveryVersion(v => v + 1);
+                setSaveNotification('Loop raised!');
+                setTimeout(() => setSaveNotification(null), 2000);
               }}
             />
           </FloatingContainer>
