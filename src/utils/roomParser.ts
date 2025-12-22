@@ -80,60 +80,89 @@ export function parseRoomsFromSVG(svgContent: string): RoomData[] {
     const usableWidth = dims.width - 2 * MARGIN;
     const rowHeight = Math.floor((dims.height - 2 * MARGIN) / 3);
     const topRowY = MARGIN;
-    const corridorY = MARGIN + rowHeight;
     const bottomRowY = MARGIN + 2 * rowHeight;
+
+
+    // Find public corridor rooms
+    const publicRooms = rooms.filter(r => r.type === 'public');
+    const EPSILON = 5;
+    const intervalsOverlap = (a1: number, w1: number, a2: number, w2: number) => {
+        return Math.max(a1, a2) < Math.min(a1 + w1, a2 + w2) - EPSILON;
+    };
 
     // Calculate door positions and exterior walls for each room
     for (const room of rooms) {
-        // Skip public areas - they're corridors
-        if (room.type === 'public') continue;
-
         // Determine exterior walls based on position
         room.isExterior = {
-            top: room.y === topRowY,
+            top: room.y <= topRowY + 5,
             bottom: room.y + room.height >= bottomRowY + rowHeight - 5,
             left: room.x <= MARGIN + 5,
             right: room.x + room.width >= MARGIN + usableWidth - 5,
         };
 
-        // Calculate door position based on room location relative to corridor
-        const roomBottom = room.y + room.height;
+        // Skip public areas for door logic
+        if (room.type === 'public') continue;
 
-        // Room above corridor - door at bottom
-        if (Math.abs(roomBottom - corridorY) < 5) {
-            room.door = {
-                x: room.x + room.width / 2 - DOOR_WIDTH / 2,
-                y: roomBottom,
-                direction: 'top',
-                roomId: room.id,
-            };
-        }
-        // Room below corridor - door at top  
-        else if (Math.abs(room.y - (corridorY + rowHeight)) < 5) {
-            room.door = {
-                x: room.x + room.width / 2 - DOOR_WIDTH / 2,
-                y: room.y,
-                direction: 'bottom',
-                roomId: room.id,
-            };
-        }
-        // Room to the right of corridor - door at left
-        else if (room.x > MARGIN + usableWidth - room.width - 5) {
-            room.door = {
-                x: room.x,
-                y: room.y + room.height / 2 - DOOR_WIDTH / 2,
-                direction: 'right',
-                roomId: room.id,
-            };
-        }
         // Special case for entrance - door at bottom facing outside
-        if (room.type === 'entrance') {
+        if (room.type === 'entrance' || room.label === 'Main Entrance') {
             room.door = {
                 x: room.x + room.width / 2 - DOOR_WIDTH / 2,
                 y: room.y + room.height,
                 direction: 'bottom',
                 roomId: room.id,
             };
+            continue;
+        }
+
+        // Find adjacent public room for door placement
+        const publicNeighbor = publicRooms.find(p => {
+            // Check adjacency
+            const touchTop = Math.abs(p.y + p.height - room.y) < EPSILON && intervalsOverlap(p.x, p.width, room.x, room.width);
+            const touchBottom = Math.abs(room.y + room.height - p.y) < EPSILON && intervalsOverlap(p.x, p.width, room.x, room.width);
+            const touchLeft = Math.abs(p.x + p.width - room.x) < EPSILON && intervalsOverlap(p.y, p.height, room.y, room.height);
+            const touchRight = Math.abs(room.x + room.width - p.x) < EPSILON && intervalsOverlap(p.y, p.height, room.y, room.height);
+            return touchTop || touchBottom || touchLeft || touchRight;
+        });
+
+        if (publicNeighbor) {
+            const p = publicNeighbor;
+            // Determine direction
+            // Top (Room is below Public) -> Door Top
+            if (Math.abs(p.y + p.height - room.y) < EPSILON) {
+                room.door = {
+                    x: room.x + room.width / 2 - DOOR_WIDTH / 2,
+                    y: room.y,
+                    direction: 'top',
+                    roomId: room.id,
+                };
+            }
+            // Bottom (Room is above Public) -> Door Bottom
+            else if (Math.abs(room.y + room.height - p.y) < EPSILON) {
+                room.door = {
+                    x: room.x + room.width / 2 - DOOR_WIDTH / 2,
+                    y: room.y + room.height,
+                    direction: 'bottom',
+                    roomId: room.id,
+                };
+            }
+            // Left (Room is right of Public) -> Door Left
+            else if (Math.abs(p.x + p.width - room.x) < EPSILON) {
+                room.door = {
+                    x: room.x,
+                    y: room.y + room.height / 2 - DOOR_WIDTH / 2,
+                    direction: 'left',
+                    roomId: room.id,
+                };
+            }
+            // Right (Room is left of Public) -> Door Right
+            else if (Math.abs(room.x + room.width - p.x) < EPSILON) {
+                room.door = {
+                    x: room.x + room.width - 2, // Slightly adjusted for coordinate
+                    y: room.y + room.height / 2 - DOOR_WIDTH / 2,
+                    direction: 'right',
+                    roomId: room.id,
+                };
+            }
         }
     }
 

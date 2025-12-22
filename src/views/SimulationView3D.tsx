@@ -214,17 +214,51 @@ function RoomFurniture({ type, width, height }: { type: string, width: number, h
     }
 
     if (type === 'toilet') {
+        // Place toilets along the wall (assuming top/bottom placement based on aspect ratio)
+        // For simplicity, just place 1 or 2 toilets
         return (
             <group>
-                <mesh position={[0, 1.5, 0]} castShadow>
-                    <boxGeometry args={[width * 0.6, 3, 0.1]} />
-                    <meshStandardMaterial color="#E2E8F0" />
-                </mesh>
+                <group scale={[1.4, 1.4, 1.4]} position={[-width / 4, 0, -height / 2 + 1]}>
+                    <Toilet x={0} z={0} rotation={0} />
+                </group>
+                {width > 20 && (
+                    <group scale={[1.4, 1.4, 1.4]} position={[width / 4, 0, -height / 2 + 1]}>
+                        <Toilet x={0} z={0} rotation={0} />
+                    </group>
+                )}
             </group>
         )
+
     }
 
     return null;
+}
+
+function Toilet({ x, z, rotation }: { x: number; z: number; rotation: number }) {
+    return (
+        <group position={[x, 0, z]} rotation={[0, rotation, 0]}>
+            {/* Tank */}
+            <mesh position={[0, 1.2, -0.6]} castShadow>
+                <boxGeometry args={[0.8, 1, 0.4]} />
+                <meshStandardMaterial color="#ffffff" />
+            </mesh>
+            {/* Seat/Bowl Base */}
+            <mesh position={[0, 0.6, 0]} castShadow>
+                <cylinderGeometry args={[0.35, 0.3, 0.8]} />
+                <meshStandardMaterial color="#ffffff" />
+            </mesh>
+            {/* Bowl Top */}
+            <mesh position={[0, 1.0, 0.1]}>
+                <cylinderGeometry args={[0.35, 0.35, 0.1]} />
+                <meshStandardMaterial color="#ffffff" />
+            </mesh>
+            {/* Lid */}
+            <mesh position={[0, 1.05, -0.2]} rotation={[Math.PI / 6, 0, 0]}>
+                <boxGeometry args={[0.7, 0.8, 0.05]} />
+                <meshStandardMaterial color="#ffffff" />
+            </mesh>
+        </group>
+    );
 }
 
 
@@ -337,7 +371,7 @@ function WallWithGap({
 
 // --- Main Room Component ---
 
-function Room3D({ room }: { room: RoomData }) {
+function Room3D({ room, allRooms }: { room: RoomData; allRooms: RoomData[] }) {
     const { x, y, width, height, type, label, door, isExterior } = room;
 
     const walls: React.ReactElement[] = [];
@@ -384,35 +418,251 @@ function Room3D({ room }: { room: RoomData }) {
         }
     }
 
+    // --- Neighbor Detection to prevent Double Walls ---
+    const EPSILON = 5;
+    const intervalsOverlap = (a1: number, w1: number, a2: number, w2: number) => {
+        return Math.max(a1, a2) < Math.min(a1 + w1, a2 + w2) - EPSILON;
+    };
+
+
+
+
+    // We prioritize Top and Left walls.
+    // If we have a neighbor to the Right, THEY render their Left. We skip our Right.
+    // Unless neighbor is Public (which renders nothing) or Entrance (which behaves normally but let's be safe).
+    // Actually Public Area has NO internal walls. So if neighbor is Public, WE MUST render the wall.
+
     // Generate Walls (Top, Bottom, Left, Right)
-    // ... (Logic same as before but using updated WallWithGap)
+
+    // --- Interval Subtraction Logic ---
+    type Interval = { start: number; end: number };
+
+    const subtractInterval = (intervals: Interval[], subStart: number, subEnd: number): Interval[] => {
+        const result: Interval[] = [];
+        for (const interval of intervals) {
+            // No overlap
+            if (subEnd <= interval.start || subStart >= interval.end) {
+                result.push(interval);
+                continue;
+            }
+            // Overlap logic
+            if (subStart > interval.start) {
+                result.push({ start: interval.start, end: subStart });
+            }
+            if (subEnd < interval.end) {
+                result.push({ start: subEnd, end: interval.end });
+            }
+        }
+        return result;
+    };
+
+    const getWallSegments = (side: 'top' | 'bottom' | 'left' | 'right', totalLength: number) => {
+        // Find all neighbors on this side
+        const neighbors = allRooms.filter(r => {
+            if (r.id === room.id) return false;
+            switch (side) {
+                case 'top': return Math.abs(r.y + r.height - room.y) < EPSILON && intervalsOverlap(r.x, r.width, room.x, room.width);
+                case 'bottom': return Math.abs(room.y + room.height - r.y) < EPSILON && intervalsOverlap(r.x, r.width, room.x, room.width);
+                case 'left': return Math.abs(r.x + r.width - room.x) < EPSILON && intervalsOverlap(r.y, r.height, room.y, room.height);
+                case 'right': return Math.abs(room.x + room.width - r.x) < EPSILON && intervalsOverlap(r.y, r.height, room.y, room.height);
+            }
+        });
+
+        let segments: Interval[] = [{ start: 0, end: totalLength }];
+
+        for (const neighbor of neighbors) {
+            // Determine overlap relative to my wall
+            let subStart = 0;
+            let subEnd = 0;
+            switch (side) {
+                case 'top':
+                case 'bottom':
+                    // Horizontal overlap: relative to my x
+                    subStart = Math.max(0, neighbor.x - room.x);
+                    subEnd = Math.min(totalLength, (neighbor.x + neighbor.width) - room.x);
+                    break;
+                case 'left':
+                case 'right':
+                    // Vertical overlap: relative to my y
+                    subStart = Math.max(0, neighbor.y - room.y);
+                    subEnd = Math.min(totalLength, (neighbor.y + neighbor.height) - room.y);
+                    break;
+            }
+
+            // Decide if we should subtract this neighbor (i.e. let NEIGHBOR handle the wall, or create OPEN gap)
+            // Priority: Public Area generally DEFFERS to specific rooms, EXCEPT when filling voids.
+            // But if I am Public, I FILL voids. So I only subtract if neighbor renders.
+            // If I am Office, I RENDER potentially double wall if partial? No, Logic says:
+
+            let subtract = false;
+
+            const iAmPublic = type === 'public';
+            const neighborIsPublic = neighbor.type === 'public';
+            const iAmEntrance = type === 'entrance' || label === 'Main Entrance';
+            const neighborIsEntrance = neighbor.type === 'entrance' || neighbor.label === 'Main Entrance';
+
+            // Rule 1: Entrance touches Public (Open connection)
+            if (iAmEntrance && neighborIsPublic) subtract = true; // Open
+            else if (iAmPublic && neighborIsEntrance) subtract = true; // Open
+
+            // Rule 2: Public vs Standard Room (Corridor walls)
+            // Standard Room renders wall. Public subtracts.
+            else if (iAmPublic && !neighborIsPublic) subtract = true;
+            else if (!iAmPublic && neighborIsPublic) subtract = false; // I generate wall
+
+            // Rule 3: Standard vs Standard (e.g. Office vs Office) - Top/Left Priority
+            else {
+                // If I am Top/Left, I render. If I am Bottom/Right, neighbor renders (I subtract).
+                if (side === 'right' || side === 'bottom') subtract = true;
+            }
+
+            if (subtract) {
+                segments = subtractInterval(segments, subStart, subEnd);
+            }
+        }
+
+        // Final Filter: If I am Public, and I have 0 neighbors on a side?
+        // My logic keeps the segment. So I render wall against void. Correct.
+        // If I am Public, and I have neighbor covering 100%, segments=[]. Correct.
+
+        // If I am Entrance (Bottom) vs Public (Top). I subtracted. segments=[]. No wall. Open. Correct.
+
+        return segments;
+    };
+
+    // Generate Wall Meshes from Segments
+
     // Top
-    const hasDoorTop = door && door.direction === 'top';
-    walls.push(<WallWithGap key="top" startX={x1} startZ={z1} endX={x2} endZ={z1}
-        gapStart={hasDoorTop ? getDoorGap(x1, x2, door.x, 40).gapStart : windowTop?.gapStart}
-        gapEnd={hasDoorTop ? getDoorGap(x1, x2, door.x, 40).gapEnd : windowTop?.gapEnd}
-        openingType={windowTop ? 'window' : 'door'} />);
+    const topSegments = getWallSegments('top', width);
+    // Explicit exclusions still apply? NO, logic handles Entrance/Public relations now.
+    // Except 'isExterior'. If isExterior.top, we ALWAYS render full width (or segments?).
+    // Usually exterior has NO neighbors. So neighbors=[] -> segments=[0, width]. Correct.
+    // What if isExterior is false, but neighbors=[]? (Gap in layout). We render. Correct.
+
+    topSegments.forEach((seg, i) => {
+        // Check for Door in this segment
+        const segmentAbsX1 = x1 + seg.start * SCALE;
+        const segmentAbsX2 = x1 + seg.end * SCALE;
+
+        let localDoor: { gapStart: number, gapEnd: number, type: 'door' | 'window' } | null = null;
+
+        // Door logic (Top)
+        if (door && door.direction === 'top') {
+            // Is door within this segment?
+            const dStart = door.x;
+
+            // Relative to room x
+            const relStart = dStart - room.x;
+            const relEnd = relStart + 40;
+
+            if (relStart >= seg.start - 1 && relEnd <= seg.end + 1) {
+                localDoor = {
+                    gapStart: (relStart - seg.start) * SCALE,
+                    gapEnd: (relEnd - seg.start) * SCALE,
+                    type: 'door'
+                };
+            }
+        }
+        // Window logic (Top)
+        if (isExterior?.top && windowTop) {
+            // Window is centered. width 40.
+            const wCenter = width / 2;
+            const wStart = wCenter - 20;
+            const wEnd = wCenter + 20;
+            if (wStart >= seg.start - 1 && wEnd <= seg.end + 1) {
+                // Re-calculate local gap
+                localDoor = {
+                    gapStart: (wStart - seg.start) * SCALE,
+                    gapEnd: (wEnd - seg.start) * SCALE,
+                    type: 'window'
+                };
+            }
+        }
+
+        walls.push(<WallWithGap key={`top-${i}`} startX={segmentAbsX1} startZ={z1} endX={segmentAbsX2} endZ={z1}
+            gapStart={localDoor?.gapStart} gapEnd={localDoor?.gapEnd} openingType={localDoor?.type} />);
+    });
+
 
     // Bottom
-    const hasDoorBottom = door && door.direction === 'bottom';
-    walls.push(<WallWithGap key="bottom" startX={x1} startZ={z2} endX={x2} endZ={z2}
-        gapStart={hasDoorBottom ? getDoorGap(x1, x2, door.x, 40).gapStart : windowBottom?.gapStart}
-        gapEnd={hasDoorBottom ? getDoorGap(x1, x2, door.x, 40).gapEnd : windowBottom?.gapEnd}
-        openingType={windowBottom ? 'window' : 'door'} />);
+    const bottomSegments = getWallSegments('bottom', width);
+    bottomSegments.forEach((seg, i) => {
+        const segmentAbsX1 = x1 + seg.start * SCALE;
+        const segmentAbsX2 = x1 + seg.end * SCALE;
+        let localDoor: { gapStart: number, gapEnd: number, type: 'door' | 'window' } | null = null;
+
+        if (door && door.direction === 'bottom') {
+            const relStart = door.x - room.x;
+            const relEnd = relStart + 40;
+            if (relStart >= seg.start - 1 && relEnd <= seg.end + 1) {
+                localDoor = { gapStart: (relStart - seg.start) * SCALE, gapEnd: (relEnd - seg.start) * SCALE, type: 'door' };
+            }
+        }
+        if (isExterior?.bottom && windowBottom) {
+            const wCenter = width / 2;
+            const wStart = wCenter - 20;
+            const wEnd = wCenter + 20;
+            if (wStart >= seg.start - 1 && wEnd <= seg.end + 1) {
+                localDoor = { gapStart: (wStart - seg.start) * SCALE, gapEnd: (wEnd - seg.start) * SCALE, type: 'window' };
+            }
+        }
+        walls.push(<WallWithGap key={`bottom-${i}`} startX={segmentAbsX1} startZ={z2} endX={segmentAbsX2} endZ={z2}
+            gapStart={localDoor?.gapStart} gapEnd={localDoor?.gapEnd} openingType={localDoor?.type} />);
+    });
+
 
     // Left
-    const hasDoorLeft = door && door.direction === 'left';
-    walls.push(<WallWithGap key="left" startX={x1} startZ={z1} endX={x1} endZ={z2}
-        gapStart={hasDoorLeft ? getDoorGap(z1, z2, door.y, 40).gapStart : windowLeft?.gapStart}
-        gapEnd={hasDoorLeft ? getDoorGap(z1, z2, door.y, 40).gapEnd : windowLeft?.gapEnd}
-        openingType={windowLeft ? 'window' : 'door'} />);
+    const leftSegments = getWallSegments('left', height);
+    leftSegments.forEach((seg, i) => {
+        const segmentAbsZ1 = z1 + seg.start * SCALE;
+        const segmentAbsZ2 = z1 + seg.end * SCALE;
+        let localDoor: { gapStart: number, gapEnd: number, type: 'door' | 'window' } | null = null;
+
+        if (door && door.direction === 'left') {
+            const relStart = door.y - room.y;
+            const relEnd = relStart + 40;
+            if (relStart >= seg.start - 1 && relEnd <= seg.end + 1) {
+                localDoor = { gapStart: (relStart - seg.start) * SCALE, gapEnd: (relEnd - seg.start) * SCALE, type: 'door' };
+            }
+        }
+        if (isExterior?.left && windowLeft) {
+            const wCenter = height / 2;
+            const wStart = wCenter - 20;
+            const wEnd = wCenter + 20;
+            if (wStart >= seg.start - 1 && wEnd <= seg.end + 1) {
+                localDoor = { gapStart: (wStart - seg.start) * SCALE, gapEnd: (wEnd - seg.start) * SCALE, type: 'window' };
+            }
+        }
+        walls.push(<WallWithGap key={`left-${i}`} startX={x1} startZ={segmentAbsZ1} endX={x1} endZ={segmentAbsZ2}
+            gapStart={localDoor?.gapStart} gapEnd={localDoor?.gapEnd} openingType={localDoor?.type} />);
+    });
+
 
     // Right
-    const hasDoorRight = door && door.direction === 'right';
-    walls.push(<WallWithGap key="right" startX={x2} startZ={z1} endX={x2} endZ={z2}
-        gapStart={hasDoorRight ? getDoorGap(z1, z2, door.y, 40).gapStart : windowRight?.gapStart}
-        gapEnd={hasDoorRight ? getDoorGap(z1, z2, door.y, 40).gapEnd : windowRight?.gapEnd}
-        openingType={windowRight ? 'window' : 'door'} />);
+    const rightSegments = getWallSegments('right', height);
+    rightSegments.forEach((seg, i) => {
+        const segmentAbsZ1 = z1 + seg.start * SCALE;
+        const segmentAbsZ2 = z1 + seg.end * SCALE;
+        let localDoor: { gapStart: number, gapEnd: number, type: 'door' | 'window' } | null = null;
+
+        if (door && door.direction === 'right') {
+            const relStart = door.y - room.y;
+            const relEnd = relStart + 40;
+            if (relStart >= seg.start - 1 && relEnd <= seg.end + 1) {
+                localDoor = { gapStart: (relStart - seg.start) * SCALE, gapEnd: (relEnd - seg.start) * SCALE, type: 'door' };
+            }
+        }
+        if (isExterior?.right && windowRight) {
+            const wCenter = height / 2;
+            const wStart = wCenter - 20;
+            const wEnd = wCenter + 20;
+            if (wStart >= seg.start - 1 && wEnd <= seg.end + 1) {
+                localDoor = { gapStart: (wStart - seg.start) * SCALE, gapEnd: (wEnd - seg.start) * SCALE, type: 'window' };
+            }
+        }
+        walls.push(<WallWithGap key={`right-${i}`} startX={x2} startZ={segmentAbsZ1} endX={x2} endZ={segmentAbsZ2}
+            gapStart={localDoor?.gapStart} gapEnd={localDoor?.gapEnd} openingType={localDoor?.type} />);
+    });
 
 
 
@@ -640,17 +890,17 @@ function Window3D({ x, y, width, isHorizontal }: { x: number; y: number; width: 
     const d = isHorizontal ? WALL_THICKNESS * 2 : width * SCALE;
     return (
         <group position={[posX + (isHorizontal ? w / 2 : 0), WINDOW_Y_OFFSET + WINDOW_HEIGHT / 2, posZ + (isHorizontal ? 0 : d / 2)]}>
-            {/* Glass */}
-            <mesh castShadow>
+            {/* Glass - Simplified for better transparency */}
+            <mesh>
                 <boxGeometry args={[w, WINDOW_HEIGHT, d * 0.5]} />
-                <meshPhysicalMaterial
-                    color="#e0f2fe"
-                    metalness={0.1}
-                    roughness={0}
-                    transmission={0.9} // Glass transmission
-                    thickness={0.5}
+                <meshStandardMaterial
+                    color="#bae6fd"
                     transparent
-                    opacity={1}
+                    opacity={0.3}
+                    roughness={0}
+                    metalness={0.9}
+                    emissive="#bae6fd"
+                    emissiveIntensity={0.2}
                 />
             </mesh>
             {/* Frame - Outer */}
@@ -713,7 +963,7 @@ function Scene({ svgContent, placedDevices, activatedDevices, activatedSounders,
 
             {/* Rooms & Furniture */}
             {rooms.map((room) => (
-                <Room3D key={room.id} room={room} />
+                <Room3D key={room.id} room={room} allRooms={rooms} />
             ))}
 
             {/* Devices */}
