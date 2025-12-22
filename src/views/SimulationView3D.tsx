@@ -888,27 +888,40 @@ function Window3D({ x, y, width, isHorizontal }: { x: number; y: number; width: 
     const posZ = y * SCALE;
     const w = isHorizontal ? width * SCALE : WALL_THICKNESS * 2;
     const d = isHorizontal ? WALL_THICKNESS * 2 : width * SCALE;
+    const frameThickness = 0.15;
+
     return (
         <group position={[posX + (isHorizontal ? w / 2 : 0), WINDOW_Y_OFFSET + WINDOW_HEIGHT / 2, posZ + (isHorizontal ? 0 : d / 2)]}>
-            {/* Glass - Simplified for better transparency */}
+            {/* Very light glass - almost invisible */}
             <mesh>
-                <boxGeometry args={[w, WINDOW_HEIGHT, d * 0.5]} />
-                <meshStandardMaterial
-                    color="#bae6fd"
+                <boxGeometry args={[w - frameThickness * 2, WINDOW_HEIGHT - frameThickness * 2, 0.05]} />
+                <meshBasicMaterial
+                    color="#e0f7ff"
                     transparent
-                    opacity={0.3}
-                    roughness={0}
-                    metalness={0.9}
-                    emissive="#bae6fd"
-                    emissiveIntensity={0.2}
+                    opacity={0.15}
                 />
             </mesh>
-            {/* Frame - Outer */}
-            <mesh position={[0, 0, 0]}>
-                <boxGeometry args={[w + 0.2, WINDOW_HEIGHT + 0.2, d]} />
-                <meshStandardMaterial color="#1e293b" />
+            {/* Frame - just thin edges, not solid box */}
+            {/* Top edge */}
+            <mesh position={[0, WINDOW_HEIGHT / 2 - frameThickness / 2, 0]}>
+                <boxGeometry args={[w, frameThickness, frameThickness * 2]} />
+                <meshStandardMaterial color="#334155" />
             </mesh>
-            {/* Only show frame edge, hack by using inner cutout? No, simple box frame is fine if we make glass thinner inside */}
+            {/* Bottom edge */}
+            <mesh position={[0, -WINDOW_HEIGHT / 2 + frameThickness / 2, 0]}>
+                <boxGeometry args={[w, frameThickness, frameThickness * 2]} />
+                <meshStandardMaterial color="#334155" />
+            </mesh>
+            {/* Left edge */}
+            <mesh position={[isHorizontal ? -w / 2 + frameThickness / 2 : 0, 0, isHorizontal ? 0 : -d / 2 + frameThickness / 2]}>
+                <boxGeometry args={[isHorizontal ? frameThickness : frameThickness * 2, WINDOW_HEIGHT, isHorizontal ? frameThickness * 2 : frameThickness]} />
+                <meshStandardMaterial color="#334155" />
+            </mesh>
+            {/* Right edge */}
+            <mesh position={[isHorizontal ? w / 2 - frameThickness / 2 : 0, 0, isHorizontal ? 0 : d / 2 - frameThickness / 2]}>
+                <boxGeometry args={[isHorizontal ? frameThickness : frameThickness * 2, WINDOW_HEIGHT, isHorizontal ? frameThickness * 2 : frameThickness]} />
+                <meshStandardMaterial color="#334155" />
+            </mesh>
         </group>
     );
 }
