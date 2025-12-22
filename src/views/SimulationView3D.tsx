@@ -478,6 +478,80 @@ function GlassSlidingDoor3D({ x, z, doorWidth, isHorizontal = true }: {
     );
 }
 
+// Red fire exit door on the right wall of the public corridor
+function FireDoor3D({ x, z, doorWidth, doorHeight = DOOR_HEIGHT }: {
+    x: number; z: number; doorWidth: number; doorHeight?: number
+}) {
+    const doorColor = '#B91C1C'; // Dark red for fire door
+    const frameColor = '#7F1D1D'; // Darker red frame
+    const frameThickness = 0.15;
+    const handleColor = '#FCD34D'; // Yellow/gold push bar
+
+    return (
+        <group position={[x, doorHeight / 2, z + doorWidth / 2]}>
+            {/* Door panel - red */}
+            <mesh castShadow>
+                <boxGeometry args={[0.15, doorHeight - frameThickness * 2, doorWidth - frameThickness * 2]} />
+                <meshStandardMaterial color={doorColor} roughness={0.3} metalness={0.1} />
+            </mesh>
+
+            {/* Top frame */}
+            <mesh position={[0, doorHeight / 2 - frameThickness / 2, 0]}>
+                <boxGeometry args={[0.2, frameThickness, doorWidth]} />
+                <meshStandardMaterial color={frameColor} />
+            </mesh>
+
+            {/* Bottom frame */}
+            <mesh position={[0, -doorHeight / 2 + frameThickness / 2, 0]}>
+                <boxGeometry args={[0.2, frameThickness, doorWidth]} />
+                <meshStandardMaterial color={frameColor} />
+            </mesh>
+
+            {/* Left frame (top in z) */}
+            <mesh position={[0, 0, -doorWidth / 2 + frameThickness / 2]}>
+                <boxGeometry args={[0.2, doorHeight, frameThickness]} />
+                <meshStandardMaterial color={frameColor} />
+            </mesh>
+
+            {/* Right frame (bottom in z) */}
+            <mesh position={[0, 0, doorWidth / 2 - frameThickness / 2]}>
+                <boxGeometry args={[0.2, doorHeight, frameThickness]} />
+                <meshStandardMaterial color={frameColor} />
+            </mesh>
+
+            {/* Push bar (horizontal bar for emergency exit) */}
+            <mesh position={[0.12, -0.5, 0]}>
+                <boxGeometry args={[0.1, 0.2, doorWidth * 0.7]} />
+                <meshStandardMaterial color={handleColor} roughness={0.2} metalness={0.6} />
+            </mesh>
+
+            {/* Small window in door */}
+            <mesh position={[0.1, doorHeight * 0.2, 0]}>
+                <boxGeometry args={[0.05, doorHeight * 0.25, doorWidth * 0.4]} />
+                <meshBasicMaterial color="#87CEEB" transparent opacity={0.4} />
+            </mesh>
+
+            {/* Window frame */}
+            <mesh position={[0.11, doorHeight * 0.2, 0]}>
+                <boxGeometry args={[0.02, doorHeight * 0.27, doorWidth * 0.42]} />
+                <meshStandardMaterial color={frameColor} />
+            </mesh>
+
+            {/* EXIT text panel (simplified as a green box) */}
+            <mesh position={[0.15, doorHeight * 0.4, 0]}>
+                <boxGeometry args={[0.05, 0.3, 0.8]} />
+                <meshStandardMaterial color="#16A34A" emissive="#16A34A" emissiveIntensity={0.3} />
+            </mesh>
+
+            {/* Header above fire door (wall segment) */}
+            <mesh position={[0, (doorHeight + (WALL_HEIGHT - doorHeight)) / 2, 0]}>
+                <boxGeometry args={[WALL_THICKNESS, WALL_HEIGHT - doorHeight, doorWidth]} />
+                <meshStandardMaterial color="#FFFFFF" roughness={0.5} />
+            </mesh>
+        </group>
+    );
+}
+
 // --- Main Room Component ---
 
 function Room3D({ room, allRooms }: { room: RoomData; allRooms: RoomData[] }) {
@@ -780,7 +854,15 @@ function Room3D({ room, allRooms }: { room: RoomData; allRooms: RoomData[] }) {
                 localDoor = { gapStart: (relStart - seg.start) * SCALE, gapEnd: (relEnd - seg.start) * SCALE, type: 'door' };
             }
         }
-        if (isExterior?.right && windowRight) {
+        // For public corridor, add fire door gap on right exterior wall (instead of window)
+        if (type === 'public' && isExterior?.right) {
+            const doorCenter = height / 2;
+            const dStart = doorCenter - 20; // 40 SVG units door width, centered
+            const dEnd = doorCenter + 20;
+            if (dStart >= seg.start - 1 && dEnd <= seg.end + 1) {
+                localDoor = { gapStart: (dStart - seg.start) * SCALE, gapEnd: (dEnd - seg.start) * SCALE, type: 'door' };
+            }
+        } else if (isExterior?.right && windowRight) {
             const wCenter = height / 2;
             const wStart = wCenter - 20;
             const wEnd = wCenter + 20;
@@ -1081,6 +1163,13 @@ function Scene({ svgContent, placedDevices, activatedDevices, activatedSounders,
     const centerX = (dimensions.width / 2) * SCALE;
     const centerZ = (dimensions.height / 2) * SCALE;
 
+    // Find the public corridor for fire door positioning
+    const publicCorridor = rooms.find(r => r.type === 'public');
+    const fireDoorWidth = DOOR_WIDTH; // Standard door width (40 SVG units * SCALE)
+    // Fire door position: right wall of public corridor, vertically centered
+    const fireDoorX = publicCorridor ? (publicCorridor.x + publicCorridor.width) * SCALE : 0;
+    const fireDoorZ = publicCorridor ? (publicCorridor.y + publicCorridor.height / 2 - 20) * SCALE : 0;
+
     return (
         <>
             {/* Lighting Setup */}
@@ -1122,6 +1211,15 @@ function Scene({ svgContent, placedDevices, activatedDevices, activatedSounders,
             {rooms.map((room) => (
                 <Room3D key={room.id} room={room} allRooms={rooms} />
             ))}
+
+            {/* Fire Door on right wall of public corridor */}
+            {publicCorridor && (
+                <FireDoor3D
+                    x={fireDoorX}
+                    z={fireDoorZ}
+                    doorWidth={fireDoorWidth}
+                />
+            )}
 
             {/* Devices */}
             {detectors.filter(d => !d.mountedOnSocketId).map(d => (

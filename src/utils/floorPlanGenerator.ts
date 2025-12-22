@@ -43,7 +43,7 @@ const ROOM_LABELS: Record<RoomType, string> = {
 
 // Room size weights - more balanced (less variance)
 const SIZE_WEIGHTS: Record<RoomType, number> = {
-    office: 1.2,
+    office: 1.4,    // Must be wider than toilet
     meeting: 1.8,   // Just 1.5x office, not 2x
     toilet: 1.0,
     entrance: 1.5,
@@ -651,7 +651,7 @@ export function generateFloorPlan(config: RoomConfig): string {
 }
 
 export const defaultConfig: RoomConfig = {
-    offices: 6,
+    offices: 5,
     meetingRooms: 2,
     toilets: 3,
 };
