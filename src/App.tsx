@@ -9,6 +9,7 @@ import SaveNameDialog from './components/SaveNameDialog';
 import ViewTabs from './components/ViewTabs';
 import PanelView from './views/PanelView';
 import SimulationView from './views/SimulationView';
+import SimulationView3D from './views/SimulationView3D';
 import UnifiedSidebar from './components/UnifiedSidebar';
 import type { UnifiedSidebarTab } from './components/UnifiedSidebar';
 import { generateFloorPlan, defaultConfig } from './utils/floorPlanGenerator';
@@ -165,6 +166,7 @@ function App() {
 
   // Simulation state - activated devices
   const [activatedDevices, setActivatedDevices] = useState<Set<string>>(new Set());
+  const [is3DSimulation, setIs3DSimulation] = useState(false);
 
   // System alarm state - persists until RESET is pressed on panel
   const [isSystemAlarm, setIsSystemAlarm] = useState(false);
@@ -316,12 +318,10 @@ function App() {
   const panelDisabledReason: 'no-panel' | 'not-saved' | undefined =
     !isProjectSaved ? 'not-saved' : !hasPanelDevice ? 'no-panel' : undefined;
 
-  // Check if simulation is enabled - requires saved project, loaded config, AND matching config
-  const hasConfigLoaded = loadedConfig !== null;
-  const hasConfigMatch = panelDeviceMatch?.valid ?? false;
-  const isSimulationEnabled = isProjectSaved && hasConfigLoaded && hasConfigMatch;
-  const simulationDisabledReason: 'no-config' | 'config-mismatch' | 'not-saved' | undefined =
-    !isProjectSaved ? 'not-saved' : !hasConfigLoaded ? 'no-config' : !hasConfigMatch ? 'config-mismatch' : undefined;
+
+  // Always enable simulation view to allow checking 3D model without config
+  const isSimulationEnabled = true;
+  const simulationDisabledReason: 'no-config' | 'config-mismatch' | 'not-saved' | undefined = undefined;
 
   // Projection position (where the device will land)
   const [projectionPosition, setProjectionPosition] = useState<{ x: number; y: number } | null>(null);
@@ -1237,15 +1237,40 @@ function App() {
               />
             </div>
           ) : activeView === 'simulation' ? (
-            <SimulationView
-              svgContent={svgContent}
-              placedDevices={placedDevices}
-              selectedDeviceId={selectedDeviceId}
-              activatedDevices={activatedDevices}
-              activatedSounders={persistentSounders}
-              onDeviceClick={handleDeviceClick}
-              onFloorPlanClick={handleFloorPlanClick}
-            />
+            <div className="flex-1 h-full relative">
+              {/* 3D Toggle Button */}
+              <div className="absolute top-4 right-4 z-20">
+                <button
+                  onClick={() => setIs3DSimulation(!is3DSimulation)}
+                  className={`px-3 py-1.5 rounded-lg font-medium text-sm transition-all shadow-md ${is3DSimulation
+                    ? 'bg-blue-600 text-white hover:bg-blue-500'
+                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    }`}
+                >
+                  {is3DSimulation ? '3D View' : '2D View'}
+                </button>
+              </div>
+
+              {is3DSimulation ? (
+                <SimulationView3D
+                  svgContent={svgContent}
+                  placedDevices={placedDevices}
+                  activatedDevices={activatedDevices}
+                  activatedSounders={persistentSounders}
+                  onDeviceClick={handleDeviceClick}
+                />
+              ) : (
+                <SimulationView
+                  svgContent={svgContent}
+                  placedDevices={placedDevices}
+                  selectedDeviceId={selectedDeviceId}
+                  activatedDevices={activatedDevices}
+                  activatedSounders={persistentSounders}
+                  onDeviceClick={handleDeviceClick}
+                  onFloorPlanClick={handleFloorPlanClick}
+                />
+              )}
+            </div>
           ) : (
             <PanelView
               projectName={currentProjectName}
