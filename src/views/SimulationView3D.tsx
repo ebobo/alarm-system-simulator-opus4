@@ -368,6 +368,115 @@ function WallWithGap({
     return <>{segments}</>;
 }
 
+// Glass sliding door between entrance and public area
+function GlassSlidingDoor3D({ x, z, doorWidth, isHorizontal = true }: {
+    x: number; z: number; doorWidth: number; isHorizontal?: boolean
+}) {
+    const frameColor = '#334155'; // Match window frame color
+    const frameThickness = 0.15;
+    const doorHeight = DOOR_HEIGHT;
+    const panelWidth = (doorWidth - 0.3) / 2; // Two panels with center gap
+
+    return (
+        <group position={[x + (isHorizontal ? doorWidth / 2 : 0), doorHeight / 2, z + (isHorizontal ? 0 : doorWidth / 2)]}>
+            {/* Left glass panel - very light like windows */}
+            <mesh position={[isHorizontal ? -panelWidth / 2 - 0.08 : 0, 0, isHorizontal ? 0 : -panelWidth / 2 - 0.08]}>
+                <boxGeometry args={[
+                    isHorizontal ? panelWidth : 0.05,
+                    doorHeight - frameThickness * 2,
+                    isHorizontal ? 0.05 : panelWidth
+                ]} />
+                <meshBasicMaterial
+                    color="#e0f7ff"
+                    transparent
+                    opacity={0.15}
+                />
+            </mesh>
+
+            {/* Right glass panel - very light like windows */}
+            <mesh position={[isHorizontal ? panelWidth / 2 + 0.08 : 0, 0, isHorizontal ? 0 : panelWidth / 2 + 0.08]}>
+                <boxGeometry args={[
+                    isHorizontal ? panelWidth : 0.05,
+                    doorHeight - frameThickness * 2,
+                    isHorizontal ? 0.05 : panelWidth
+                ]} />
+                <meshBasicMaterial
+                    color="#e0f7ff"
+                    transparent
+                    opacity={0.15}
+                />
+            </mesh>
+
+            {/* Center frame divider */}
+            <mesh position={[0, 0, 0]}>
+                <boxGeometry args={[
+                    isHorizontal ? frameThickness : frameThickness * 2,
+                    doorHeight,
+                    isHorizontal ? frameThickness * 2 : frameThickness
+                ]} />
+                <meshStandardMaterial color={frameColor} />
+            </mesh>
+
+            {/* Top frame */}
+            <mesh position={[0, doorHeight / 2 - frameThickness / 2, 0]}>
+                <boxGeometry args={[
+                    isHorizontal ? doorWidth : frameThickness * 2,
+                    frameThickness,
+                    isHorizontal ? frameThickness * 2 : doorWidth
+                ]} />
+                <meshStandardMaterial color={frameColor} />
+            </mesh>
+
+            {/* Bottom frame */}
+            <mesh position={[0, -doorHeight / 2 + frameThickness / 2, 0]}>
+                <boxGeometry args={[
+                    isHorizontal ? doorWidth : frameThickness * 2,
+                    frameThickness,
+                    isHorizontal ? frameThickness * 2 : doorWidth
+                ]} />
+                <meshStandardMaterial color={frameColor} />
+            </mesh>
+
+            {/* Left frame edge */}
+            <mesh position={[
+                isHorizontal ? -doorWidth / 2 + frameThickness / 2 : 0,
+                0,
+                isHorizontal ? 0 : -doorWidth / 2 + frameThickness / 2
+            ]}>
+                <boxGeometry args={[
+                    isHorizontal ? frameThickness : frameThickness * 2,
+                    doorHeight,
+                    isHorizontal ? frameThickness * 2 : frameThickness
+                ]} />
+                <meshStandardMaterial color={frameColor} />
+            </mesh>
+
+            {/* Right frame edge */}
+            <mesh position={[
+                isHorizontal ? doorWidth / 2 - frameThickness / 2 : 0,
+                0,
+                isHorizontal ? 0 : doorWidth / 2 - frameThickness / 2
+            ]}>
+                <boxGeometry args={[
+                    isHorizontal ? frameThickness : frameThickness * 2,
+                    doorHeight,
+                    isHorizontal ? frameThickness * 2 : frameThickness
+                ]} />
+                <meshStandardMaterial color={frameColor} />
+            </mesh>
+
+            {/* Header above glass door */}
+            <mesh position={[0, (doorHeight + (WALL_HEIGHT - doorHeight)) / 2, 0]}>
+                <boxGeometry args={[
+                    isHorizontal ? doorWidth : WALL_THICKNESS,
+                    WALL_HEIGHT - doorHeight,
+                    isHorizontal ? WALL_THICKNESS : doorWidth
+                ]} />
+                <meshStandardMaterial color="#FFFFFF" roughness={0.5} />
+            </mesh>
+        </group>
+    );
+}
 
 // --- Main Room Component ---
 
@@ -501,9 +610,11 @@ function Room3D({ room, allRooms }: { room: RoomData; allRooms: RoomData[] }) {
             const iAmEntrance = type === 'entrance' || label === 'Main Entrance';
             const neighborIsEntrance = neighbor.type === 'entrance' || neighbor.label === 'Main Entrance';
 
-            // Rule 1: Entrance touches Public (Open connection)
-            if (iAmEntrance && neighborIsPublic) subtract = true; // Open
-            else if (iAmPublic && neighborIsEntrance) subtract = true; // Open
+            // Rule 1: Entrance touches Public (Glass sliding door - NOT open)
+            // We need to KEEP the wall but render a glass door in the entrance's top wall
+            // So: don't subtract for entrance-public boundary; the entrance will render its wall with glass door gap
+            if (iAmEntrance && neighborIsPublic) subtract = false; // Entrance renders wall with glass door
+            else if (iAmPublic && neighborIsEntrance) subtract = true; // Public defers to entrance
 
             // Rule 2: Public vs Standard Room (Corridor walls)
             // Standard Room renders wall. Public subtracts.
@@ -575,6 +686,23 @@ function Room3D({ room, allRooms }: { room: RoomData; allRooms: RoomData[] }) {
                     gapStart: (wStart - seg.start) * SCALE,
                     gapEnd: (wEnd - seg.start) * SCALE,
                     type: 'window'
+                };
+            }
+        }
+
+        // Glass sliding door gap for entrance (top wall facing public area)
+        const isEntranceRoom = type === 'entrance' || label === 'Main Entrance';
+        if (isEntranceRoom) {
+            // Glass door is 70% of entrance width, centered
+            const glassDoorWidthSVG = Math.min(width * 0.7, 100);
+            const glassDoorStart = (width - glassDoorWidthSVG) / 2;
+            const glassDoorEnd = glassDoorStart + glassDoorWidthSVG;
+
+            if (glassDoorStart >= seg.start - 1 && glassDoorEnd <= seg.end + 1) {
+                localDoor = {
+                    gapStart: (glassDoorStart - seg.start) * SCALE,
+                    gapEnd: (glassDoorEnd - seg.start) * SCALE,
+                    type: 'door' // Use door type so it gets proper height gap
                 };
             }
         }
@@ -665,9 +793,15 @@ function Room3D({ room, allRooms }: { room: RoomData; allRooms: RoomData[] }) {
     });
 
 
-
     const centerX = (x + width / 2) * SCALE;
     const centerZ = (y + height / 2) * SCALE;
+
+    // Check if this is the entrance room (needs glass door to public area)
+    const isEntrance = type === 'entrance' || label === 'Main Entrance';
+    // Glass door configuration - centered on entrance width
+    const glassDoorWidth = Math.min(width * 0.7, 100) * SCALE; // 70% of entrance width, max 100 SVG units
+    const glassDoorX = x1 + (width * SCALE - glassDoorWidth) / 2;
+    const glassDoorZ = z1; // Top of entrance = boundary with public area
 
     return (
         <group>
@@ -675,6 +809,16 @@ function Room3D({ room, allRooms }: { room: RoomData; allRooms: RoomData[] }) {
             {walls}
             {windows}
             {door && <Door3D x={door.x} y={door.y} direction={door.direction} />}
+
+            {/* Glass sliding door for entrance */}
+            {isEntrance && (
+                <GlassSlidingDoor3D
+                    x={glassDoorX}
+                    z={glassDoorZ}
+                    doorWidth={glassDoorWidth}
+                    isHorizontal={true}
+                />
+            )}
 
             {/* Furniture - centered in room */}
             <group position={[centerX, 0, centerZ]}>

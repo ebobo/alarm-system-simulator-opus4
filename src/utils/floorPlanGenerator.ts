@@ -363,6 +363,59 @@ function renderEntranceDoor(entrance: Room, canvasHeight: number): string {
   `;
 }
 
+// Render a glass sliding door between entrance and public area
+function renderGlassSlidingDoor(entrance: Room): string {
+    // Door width is slightly smaller than entrance width for a better look
+    const doorWidth = Math.min(entrance.width - 20, 100);
+    const doorX = entrance.x + (entrance.width - doorWidth) / 2;
+    const doorY = entrance.y; // Top of entrance = boundary with public area
+
+    // Glass sliding door rendering:
+    // - A wall line across the full entrance width
+    // - Glass panels indicated by cyan fill with frame lines
+    // - Sliding arrow indicators
+
+    const frameThickness = 3;
+    const glassColor = '#E0F7FA'; // Light cyan for glass
+    const frameColor = '#37474F'; // Dark gray for frame
+
+    // Split into two sliding panels
+    const panelWidth = (doorWidth - 4) / 2; // -4 for center frame
+    const panel1X = doorX;
+    const panel2X = doorX + panelWidth + 4;
+
+    return `
+    <!-- Wall segments on sides of glass door -->
+    <line x1="${entrance.x}" y1="${doorY}" x2="${doorX}" y2="${doorY}" 
+          stroke="#333" stroke-width="${INNER_WALL_THICKNESS}"/>
+    <line x1="${doorX + doorWidth}" y1="${doorY}" x2="${entrance.x + entrance.width}" y2="${doorY}" 
+          stroke="#333" stroke-width="${INNER_WALL_THICKNESS}"/>
+    
+    <!-- Glass door frame (outer) -->
+    <rect x="${doorX}" y="${doorY - frameThickness}" width="${doorWidth}" height="${frameThickness * 2}" 
+          fill="${frameColor}"/>
+    
+    <!-- Left glass panel -->
+    <rect x="${panel1X + 2}" y="${doorY - frameThickness + 1}" width="${panelWidth - 2}" height="${frameThickness * 2 - 2}" 
+          fill="${glassColor}" stroke="${frameColor}" stroke-width="1"/>
+    
+    <!-- Right glass panel -->
+    <rect x="${panel2X}" y="${doorY - frameThickness + 1}" width="${panelWidth - 2}" height="${frameThickness * 2 - 2}" 
+          fill="${glassColor}" stroke="${frameColor}" stroke-width="1"/>
+    
+    <!-- Center frame divider -->
+    <line x1="${doorX + panelWidth + 2}" y1="${doorY - frameThickness}" 
+          x2="${doorX + panelWidth + 2}" y2="${doorY + frameThickness}" 
+          stroke="${frameColor}" stroke-width="2"/>
+    
+    <!-- Sliding indicators (small arrows) -->
+    <path d="M ${panel1X + panelWidth / 2 - 5} ${doorY} l 10 0 l -3 -2 m 3 2 l -3 2" 
+          fill="none" stroke="#666" stroke-width="1"/>
+    <path d="M ${panel2X + panelWidth / 2 + 5} ${doorY} l -10 0 l 3 -2 m -3 2 l 3 2" 
+          fill="none" stroke="#666" stroke-width="1"/>
+  `;
+}
+
 export function generateFloorPlan(config: RoomConfig): string {
     const canvasWidth = 900;
     const canvasHeight = 700;
@@ -583,12 +636,8 @@ export function generateFloorPlan(config: RoomConfig): string {
         }
     }
 
-    // Open connection between entrance and public area (remove wall)
-    const openGapWidth = Math.min(entranceWidth - 20, 100);
-    const openGapX = entrance.x + (entranceWidth - openGapWidth) / 2;
-    svg += `
-    <rect x="${openGapX}" y="${bottomRowY - INNER_WALL_THICKNESS / 2}" width="${openGapWidth}" height="${INNER_WALL_THICKNESS + 2}" fill="${ROOM_COLORS.public}"/>
-    `;
+    // Glass sliding door between entrance and public area (instead of open gap)
+    svg += renderGlassSlidingDoor(entrance);
 
     // Render exterior windows on room walls
     svg += renderExteriorWindows(rooms, margin, usableWidth, topRowY, bottomRowY, rowHeight, entranceX, entranceWidth);
