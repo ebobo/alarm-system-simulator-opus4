@@ -245,3 +245,83 @@ export function exportSVG(svgContent: string, projectName: string): void {
     // Clean up object URL
     URL.revokeObjectURL(url);
 }
+
+/**
+ * Generate Excel workbook as a Blob (for cloud upload without download)
+ */
+export function generateExcelBlob(
+    projectName: string,
+    svgContent: string
+): Blob {
+    // Generate device list
+    const devices = generateDeviceList(projectName, svgContent);
+
+    // Generate C&E Matrix
+    const ceMatrix = generateCEMatrix(devices);
+
+    // Create workbook
+    const workbook = XLSX.utils.book_new();
+
+    // === Sheet 1: Device List ===
+    const deviceListData: (string | number)[][] = [
+        ['Project Name', 'Device Label', 'Type', 'Location', 'Display Text', 'Serial Number'],
+    ];
+
+    for (const device of devices) {
+        deviceListData.push([
+            device.projectName,
+            device.deviceLabel,
+            device.type,
+            device.location,
+            `${device.deviceLabel} ${device.location}`, // Display Text
+            device.serialNumber,
+        ]);
+    }
+
+    const deviceSheet = XLSX.utils.aoa_to_sheet(deviceListData);
+
+    // Set column widths
+    deviceSheet['!cols'] = [
+        { wch: 25 }, // Project Name
+        { wch: 15 }, // Device Label
+        { wch: 15 }, // Type
+        { wch: 20 }, // Location
+        { wch: 30 }, // Display Text
+        { wch: 15 }, // Serial Number
+    ];
+
+    XLSX.utils.book_append_sheet(workbook, deviceSheet, 'Device List');
+
+    // === Sheet 2: C&E Matrix ===
+    const ceData: string[][] = [];
+
+    // Header row - first cell empty, then input labels
+    const headerRow = ['Output \\ Input'];
+    for (const input of ceMatrix.inputs) {
+        headerRow.push(input.deviceLabel);
+    }
+    ceData.push(headerRow);
+
+    // Data rows - output label, then X marks
+    for (let i = 0; i < ceMatrix.outputs.length; i++) {
+        const output = ceMatrix.outputs[i];
+        const row = [output.deviceLabel];
+        row.push(...ceMatrix.matrix[i]);
+        ceData.push(row);
+    }
+
+    const ceSheet = XLSX.utils.aoa_to_sheet(ceData);
+
+    // Set column widths for C&E Matrix
+    const ceCols: { wch: number }[] = [{ wch: 15 }]; // Output column
+    for (const _ of ceMatrix.inputs) {
+        ceCols.push({ wch: 12 });
+    }
+    ceSheet['!cols'] = ceCols;
+
+    XLSX.utils.book_append_sheet(workbook, ceSheet, 'C&E Matrix');
+
+    // Write to array buffer and create blob
+    const data = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    return new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}

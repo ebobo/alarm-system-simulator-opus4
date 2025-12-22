@@ -1,4 +1,5 @@
 import type { ProjectListEntry } from '../types/storage';
+import CloudSync from './CloudSync';
 
 interface SidebarProps {
     onGenerate: () => void;
@@ -13,6 +14,10 @@ interface SidebarProps {
     onExportConfig?: () => void;
     isCollapsed: boolean;
     onToggleCollapse: () => void;
+    // CloudSync props
+    svgContent?: string;
+    onConfigDownloaded?: (configText: string) => void;
+    onExcelBlob?: () => Blob | null;
 }
 
 export default function Sidebar({
@@ -27,7 +32,10 @@ export default function Sidebar({
     onImportConfig,
     onExportConfig,
     isCollapsed,
-    onToggleCollapse
+    onToggleCollapse,
+    svgContent,
+    onConfigDownloaded,
+    onExcelBlob
 }: SidebarProps) {
     // Format relative time for display
     const formatRelativeTime = (isoDate: string): string => {
@@ -294,6 +302,18 @@ export default function Sidebar({
                     </>
                 )}
             </div>
+
+            {/* Cloud Sync - only show in floorplan view if props provided */}
+            {activeView === 'floorplan' && svgContent && onConfigDownloaded && onExcelBlob && (
+                <div className="p-4">
+                    <CloudSync
+                        currentProjectName={currentProjectName}
+                        svgContent={svgContent}
+                        onConfigDownloaded={onConfigDownloaded}
+                        onExcelBlob={onExcelBlob}
+                    />
+                </div>
+            )}
 
             {/* Footer */}
             <div className="p-4 border-t border-slate-700">

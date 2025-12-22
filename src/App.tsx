@@ -18,7 +18,7 @@ import { generateInstanceId, generateSerialNumber, getDeviceType } from './types
 import DevicePropertyPanel from './components/DevicePropertyPanel';
 import FloatingContainer from './components/FloatingContainer';
 import { saveProject, loadProject, deleteProject, getProjectList, generateProjectId, getMostRecentProject } from './utils/storage';
-import { exportToExcel, exportSVG } from './utils/excelExport';
+import { exportToExcel, exportSVG, generateExcelBlob } from './utils/excelExport';
 import { deriveModulesFromFloorPlan } from './utils/moduleUtils';
 import { validateDeviceMatch } from './utils/faconfigParser';
 import { computeActivatedSounders } from './utils/simulationEngine';
@@ -1122,6 +1122,20 @@ function App() {
           onImportConfig={() => configInputRef.current?.click()}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
+          // CloudSync props
+          svgContent={svgContent}
+          onConfigDownloaded={(configText) => {
+            const result = parseFAConfig(configText);
+            if (result.success) {
+              setLoadedConfig(result.config);
+              setSaveNotification('Config loaded from cloud!');
+              setTimeout(() => setSaveNotification(null), 2000);
+            }
+          }}
+          onExcelBlob={() => {
+            if (!svgContent) return null;
+            return generateExcelBlob(currentProjectName, svgContent);
+          }}
         />
 
         {/* Hidden file input for config import */}
