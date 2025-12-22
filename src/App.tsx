@@ -1239,7 +1239,7 @@ function App() {
           ) : activeView === 'simulation' ? (
             <div className="flex-1 h-full relative">
               {/* 3D Toggle Button */}
-              <div className="absolute top-4 right-4 z-20">
+              <div className="absolute top-8 right-[82px] z-20">
                 <button
                   onClick={() => setIs3DSimulation(!is3DSimulation)}
                   className={`px-3 py-1.5 rounded-lg font-medium text-sm transition-all shadow-md ${is3DSimulation

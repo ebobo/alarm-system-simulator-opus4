@@ -80,7 +80,7 @@ export default function SimulationView({
     }, []);
 
     return (
-        <div className="flex-1 p-4" onClick={onFloorPlanClick}>
+        <div className="h-full w-full p-4" onClick={onFloorPlanClick}>
             <div className="relative w-full h-full bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
                 {/* Simulation Mode Banner */}
                 <div className="absolute top-4 left-4 z-20 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg shadow-md">
