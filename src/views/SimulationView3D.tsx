@@ -232,10 +232,10 @@ function RoomFurniture({ type, width, height }: { type: string, width: number, h
 
 function WallWithGap({
     startX, startZ, endX, endZ,
-    gapStart, gapEnd
+    gapStart, gapEnd, openingType = 'door'
 }: {
     startX: number; startZ: number; endX: number; endZ: number;
-    gapStart?: number; gapEnd?: number;
+    gapStart?: number; gapEnd?: number; openingType?: 'door' | 'window';
 }) {
     const length = Math.sqrt((endX - startX) ** 2 + (endZ - startZ) ** 2);
     const angle = Math.atan2(endZ - startZ, endX - startX);
@@ -288,19 +288,42 @@ function WallWithGap({
     }
 
     // Header above door
-    const doorTopHeight = WALL_HEIGHT - DOOR_HEIGHT;
+    const doorTopHeight = openingType === 'door' ? WALL_HEIGHT - DOOR_HEIGHT : WALL_HEIGHT - (WINDOW_Y_OFFSET + WINDOW_HEIGHT);
+    const openingHeight = openingType === 'door' ? DOOR_HEIGHT : WINDOW_HEIGHT;
+    const openingY = openingType === 'door' ? 0 : WINDOW_Y_OFFSET;
+
     if (doorTopHeight > 0) {
         const gapCenterX = startX + (Math.cos(angle) * (gapStart + gapEnd) / 2);
         const gapCenterZ = startZ + (Math.sin(angle) * (gapStart + gapEnd) / 2);
 
         segments.push(
-            <group key="doorTop" position={[gapCenterX, DOOR_HEIGHT + doorTopHeight / 2, gapCenterZ]} rotation={[0, -angle, 0]}>
+            <group key="header" position={[gapCenterX, openingY + openingHeight + doorTopHeight / 2, gapCenterZ]} rotation={[0, -angle, 0]}>
                 <mesh castShadow receiveShadow>
                     <boxGeometry args={[gapEnd - gapStart, doorTopHeight, WALL_THICKNESS]} />
                     {wallMaterial}
                 </mesh>
-                {/* Black Cap for door header */}
+                {/* Black Cap for header */}
                 <mesh position={[0, doorTopHeight / 2 + 0.01, 0]}>
+                    <boxGeometry args={[gapEnd - gapStart, 0.05, WALL_THICKNESS]} />
+                    {capMaterial}
+                </mesh>
+            </group>
+        );
+    }
+
+    // Sill below window
+    if (openingType === 'window') {
+        const gapCenterX = startX + (Math.cos(angle) * (gapStart + gapEnd) / 2);
+        const gapCenterZ = startZ + (Math.sin(angle) * (gapStart + gapEnd) / 2);
+
+        segments.push(
+            <group key="sill" position={[gapCenterX, WINDOW_Y_OFFSET / 2, gapCenterZ]} rotation={[0, -angle, 0]}>
+                <mesh castShadow receiveShadow>
+                    <boxGeometry args={[gapEnd - gapStart, WINDOW_Y_OFFSET, WALL_THICKNESS]} />
+                    {wallMaterial}
+                </mesh>
+                {/* Black Cap for sill */}
+                <mesh position={[0, WINDOW_Y_OFFSET / 2 + 0.01, 0]}>
                     <boxGeometry args={[gapEnd - gapStart, 0.05, WALL_THICKNESS]} />
                     {capMaterial}
                 </mesh>
@@ -332,39 +355,66 @@ function Room3D({ room }: { room: RoomData }) {
         return { gapStart, gapEnd: gapStart + doorWidthScaled };
     };
 
+    // Calculate Window Gaps (Before Walls)
+    interface WindowGap { gapStart: number; gapEnd: number }
+    let windowTop: WindowGap | undefined;
+    let windowBottom: WindowGap | undefined;
+    let windowLeft: WindowGap | undefined;
+    let windowRight: WindowGap | undefined;
+
+    // We assume 1 window centered per exterior wall
+    const WINDOW_WIDTH = 40;
+
+    if (isExterior && type !== 'entrance' && type !== 'public') {
+        if (isExterior.top) {
+            windows.push(<Window3D key="win-top" x={x + width / 2 - WINDOW_WIDTH / 2} y={y} width={WINDOW_WIDTH} isHorizontal={true} />);
+            windowTop = getDoorGap(x1, x2, x + width / 2 - WINDOW_WIDTH / 2, WINDOW_WIDTH);
+        }
+        if (isExterior.bottom && type !== 'entrance') {
+            windows.push(<Window3D key="win-bottom" x={x + width / 2 - WINDOW_WIDTH / 2} y={y + height} width={WINDOW_WIDTH} isHorizontal={true} />);
+            windowBottom = getDoorGap(x1, x2, x + width / 2 - WINDOW_WIDTH / 2, WINDOW_WIDTH);
+        }
+        if (isExterior.left) {
+            windows.push(<Window3D key="win-left" x={x} y={y + height / 2 - WINDOW_WIDTH / 2} width={WINDOW_WIDTH} isHorizontal={false} />);
+            windowLeft = getDoorGap(z1, z2, y + height / 2 - WINDOW_WIDTH / 2, WINDOW_WIDTH);
+        }
+        if (isExterior.right) {
+            windows.push(<Window3D key="win-right" x={x + width} y={y + height / 2 - WINDOW_WIDTH / 2} width={WINDOW_WIDTH} isHorizontal={false} />);
+            windowRight = getDoorGap(z1, z2, y + height / 2 - WINDOW_WIDTH / 2, WINDOW_WIDTH);
+        }
+    }
+
     // Generate Walls (Top, Bottom, Left, Right)
     // ... (Logic same as before but using updated WallWithGap)
     // Top
     const hasDoorTop = door && door.direction === 'top';
     walls.push(<WallWithGap key="top" startX={x1} startZ={z1} endX={x2} endZ={z1}
-        gapStart={hasDoorTop ? getDoorGap(x1, x2, door.x, 40).gapStart : undefined}
-        gapEnd={hasDoorTop ? getDoorGap(x1, x2, door.x, 40).gapEnd : undefined} />);
+        gapStart={hasDoorTop ? getDoorGap(x1, x2, door.x, 40).gapStart : windowTop?.gapStart}
+        gapEnd={hasDoorTop ? getDoorGap(x1, x2, door.x, 40).gapEnd : windowTop?.gapEnd}
+        openingType={windowTop ? 'window' : 'door'} />);
 
     // Bottom
     const hasDoorBottom = door && door.direction === 'bottom';
     walls.push(<WallWithGap key="bottom" startX={x1} startZ={z2} endX={x2} endZ={z2}
-        gapStart={hasDoorBottom ? getDoorGap(x1, x2, door.x, 40).gapStart : undefined}
-        gapEnd={hasDoorBottom ? getDoorGap(x1, x2, door.x, 40).gapEnd : undefined} />);
+        gapStart={hasDoorBottom ? getDoorGap(x1, x2, door.x, 40).gapStart : windowBottom?.gapStart}
+        gapEnd={hasDoorBottom ? getDoorGap(x1, x2, door.x, 40).gapEnd : windowBottom?.gapEnd}
+        openingType={windowBottom ? 'window' : 'door'} />);
 
     // Left
     const hasDoorLeft = door && door.direction === 'left';
     walls.push(<WallWithGap key="left" startX={x1} startZ={z1} endX={x1} endZ={z2}
-        gapStart={hasDoorLeft ? getDoorGap(z1, z2, door.y, 40).gapStart : undefined}
-        gapEnd={hasDoorLeft ? getDoorGap(z1, z2, door.y, 40).gapEnd : undefined} />);
+        gapStart={hasDoorLeft ? getDoorGap(z1, z2, door.y, 40).gapStart : windowLeft?.gapStart}
+        gapEnd={hasDoorLeft ? getDoorGap(z1, z2, door.y, 40).gapEnd : windowLeft?.gapEnd}
+        openingType={windowLeft ? 'window' : 'door'} />);
 
     // Right
     const hasDoorRight = door && door.direction === 'right';
     walls.push(<WallWithGap key="right" startX={x2} startZ={z1} endX={x2} endZ={z2}
-        gapStart={hasDoorRight ? getDoorGap(z1, z2, door.y, 40).gapStart : undefined}
-        gapEnd={hasDoorRight ? getDoorGap(z1, z2, door.y, 40).gapEnd : undefined} />);
+        gapStart={hasDoorRight ? getDoorGap(z1, z2, door.y, 40).gapStart : windowRight?.gapStart}
+        gapEnd={hasDoorRight ? getDoorGap(z1, z2, door.y, 40).gapEnd : windowRight?.gapEnd}
+        openingType={windowRight ? 'window' : 'door'} />);
 
-    // Add Windows
-    if (isExterior && type !== 'entrance' && type !== 'public') {
-        if (isExterior.top) windows.push(<Window3D key="win-top" x={x + width / 2 - 20} y={y} width={40} isHorizontal={true} />);
-        if (isExterior.bottom && type !== 'entrance') windows.push(<Window3D key="win-bottom" x={x + width / 2 - 20} y={y + height} width={40} isHorizontal={true} />);
-        if (isExterior.left) windows.push(<Window3D key="win-left" x={x} y={y + height / 2 - 20} width={40} isHorizontal={false} />);
-        if (isExterior.right) windows.push(<Window3D key="win-right" x={x + width} y={y + height / 2 - 20} width={40} isHorizontal={false} />);
-    }
+
 
     const centerX = (x + width / 2) * SCALE;
     const centerZ = (y + height / 2) * SCALE;
@@ -590,14 +640,25 @@ function Window3D({ x, y, width, isHorizontal }: { x: number; y: number; width: 
     const d = isHorizontal ? WALL_THICKNESS * 2 : width * SCALE;
     return (
         <group position={[posX + (isHorizontal ? w / 2 : 0), WINDOW_Y_OFFSET + WINDOW_HEIGHT / 2, posZ + (isHorizontal ? 0 : d / 2)]}>
+            {/* Glass */}
             <mesh castShadow>
-                <boxGeometry args={[w, WINDOW_HEIGHT, d]} />
+                <boxGeometry args={[w, WINDOW_HEIGHT, d * 0.5]} />
+                <meshPhysicalMaterial
+                    color="#e0f2fe"
+                    metalness={0.1}
+                    roughness={0}
+                    transmission={0.9} // Glass transmission
+                    thickness={0.5}
+                    transparent
+                    opacity={1}
+                />
+            </mesh>
+            {/* Frame - Outer */}
+            <mesh position={[0, 0, 0]}>
+                <boxGeometry args={[w + 0.2, WINDOW_HEIGHT + 0.2, d]} />
                 <meshStandardMaterial color="#1e293b" />
             </mesh>
-            <mesh position={[0, 0, 0]}>
-                <boxGeometry args={[w * 0.9, WINDOW_HEIGHT * 0.9, d * 0.6]} />
-                <meshStandardMaterial color="#bae6fd" transparent opacity={0.6} metalness={0.9} roughness={0} />
-            </mesh>
+            {/* Only show frame edge, hack by using inner cutout? No, simple box frame is fine if we make glass thinner inside */}
         </group>
     );
 }

@@ -318,12 +318,10 @@ function App() {
   const panelDisabledReason: 'no-panel' | 'not-saved' | undefined =
     !isProjectSaved ? 'not-saved' : !hasPanelDevice ? 'no-panel' : undefined;
 
-  // Check if simulation is enabled - requires saved project, loaded config, AND matching config
-  const hasConfigLoaded = loadedConfig !== null;
-  const hasConfigMatch = panelDeviceMatch?.valid ?? false;
-  const isSimulationEnabled = isProjectSaved && hasConfigLoaded && hasConfigMatch;
-  const simulationDisabledReason: 'no-config' | 'config-mismatch' | 'not-saved' | undefined =
-    !isProjectSaved ? 'not-saved' : !hasConfigLoaded ? 'no-config' : !hasConfigMatch ? 'config-mismatch' : undefined;
+
+  // Always enable simulation view to allow checking 3D model without config
+  const isSimulationEnabled = true;
+  const simulationDisabledReason: 'no-config' | 'config-mismatch' | 'not-saved' | undefined = undefined;
 
   // Projection position (where the device will land)
   const [projectionPosition, setProjectionPosition] = useState<{ x: number; y: number } | null>(null);
