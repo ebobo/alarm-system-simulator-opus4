@@ -56,7 +56,7 @@ const MIN_ROOM_SIZE = 100;
 const MAX_ROOM_SIZE = 200; // Prevent huge rooms
 const DOOR_WIDTH = 40;
 const DOOR_ARC_RADIUS = 35;
-const OUTER_WALL_THICKNESS = 8; // Building perimeter walls
+const OUTER_WALL_THICKNESS = 12; // Building perimeter walls
 const INNER_WALL_THICKNESS = 4; // Interior room dividers
 const WINDOW_WIDTH = 40; // Window opening width
 

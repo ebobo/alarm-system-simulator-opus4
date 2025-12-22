@@ -33,7 +33,7 @@ function Controls() {
     return (
         <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
             <button
-                onClick={() => zoomIn()}
+                onClick={() => zoomIn(0.1)}
                 className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200 
                    hover:bg-gray-50 transition-all duration-200 flex items-center justify-center
                    text-gray-700 font-bold text-xl"
@@ -42,7 +42,7 @@ function Controls() {
                 +
             </button>
             <button
-                onClick={() => zoomOut()}
+                onClick={() => zoomOut(0.1)}
                 className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200 
                    hover:bg-gray-50 transition-all duration-200 flex items-center justify-center
                    text-gray-700 font-bold text-xl"
