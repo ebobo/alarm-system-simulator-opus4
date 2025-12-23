@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { importSVG, readFileAsText, type ImportResult } from '../utils/svgImporter';
 
 interface ImportFloorPlanDialogProps {
@@ -20,8 +20,23 @@ export default function ImportFloorPlanDialog({ isOpen, onClose, onImport }: Imp
     const [isProcessing, setIsProcessing] = useState(false);
     const [pastedCode, setPastedCode] = useState('');
     const [aiError, setAiError] = useState<string | null>(null);
+    const [aiAvailable, setAiAvailable] = useState<boolean | null>(null); // null = checking, true/false = result
     const fileInputRef = useRef<HTMLInputElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
+
+    // Check if AI backend is available when dialog opens
+    useEffect(() => {
+        if (isOpen) {
+            setAiAvailable(null); // Reset to checking state
+            fetch(`${AI_BACKEND_URL}/health`, { method: 'GET' })
+                .then(res => {
+                    setAiAvailable(res.ok);
+                })
+                .catch(() => {
+                    setAiAvailable(false);
+                });
+        }
+    }, [isOpen]);
 
     const resetState = useCallback(() => {
         setImportResult(null);
@@ -250,19 +265,33 @@ export default function ImportFloorPlanDialog({ isOpen, onClose, onImport }: Imp
                             </svg>
                             Paste
                         </button>
-                        <button
-                            onClick={() => handleModeChange('ai')}
-                            className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2
-                                ${inputMode === 'ai'
-                                    ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50'
-                                    : 'bg-slate-700/50 text-slate-400 hover:bg-slate-700 border border-transparent'
-                                }`}
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                            </svg>
-                            AI Image
-                        </button>
+                        <div className="relative flex-1 group">
+                            <button
+                                onClick={() => aiAvailable && handleModeChange('ai')}
+                                disabled={!aiAvailable}
+                                className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2
+                                    ${!aiAvailable
+                                        ? 'bg-slate-700/30 text-slate-500 cursor-not-allowed border border-transparent'
+                                        : inputMode === 'ai'
+                                            ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50'
+                                            : 'bg-slate-700/50 text-slate-400 hover:bg-slate-700 border border-transparent'
+                                    }`}
+                            >
+                                {aiAvailable === null ? (
+                                    <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                    </svg>
+                                )}
+                                AI Image
+                            </button>
+                            {aiAvailable === false && (
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 text-xs text-slate-300 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                    AI service unavailable (port 3002)
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Upload SVG Mode */}
