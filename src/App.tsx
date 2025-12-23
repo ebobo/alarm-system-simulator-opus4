@@ -319,9 +319,10 @@ function App() {
     !isProjectSaved ? 'not-saved' : !hasPanelDevice ? 'no-panel' : undefined;
 
 
-  // Always enable simulation view to allow checking 3D model without config
-  const isSimulationEnabled = true;
-  const simulationDisabledReason: 'no-config' | 'config-mismatch' | 'not-saved' | undefined = undefined;
+  // Simulation view requires a floor plan to exist
+  const isSimulationEnabled = !!svgContent;
+  const simulationDisabledReason: 'no-config' | 'config-mismatch' | 'not-saved' | 'no-floorplan' | undefined =
+    !svgContent ? 'no-floorplan' : undefined;
 
   // Projection position (where the device will land)
   const [projectionPosition, setProjectionPosition] = useState<{ x: number; y: number } | null>(null);
@@ -389,10 +390,10 @@ function App() {
       setCurrentProjectId(savedProject.id);
       setCurrentProjectName(savedProject.name);
     } else {
-      const initialPlan = generateFloorPlan(defaultConfig);
-      setSvgContent(initialPlan);
+      // No saved projects - start with empty state
+      setSvgContent('');
       setCurrentProjectId(null);
-      setCurrentProjectName('New Project');
+      setCurrentProjectName('');
     }
   }, []);
 
@@ -421,8 +422,8 @@ function App() {
 
   // Handle save button click
   const handleSave = () => {
-    // If project name is "Generated Plan", show dialog to get name
-    if (currentProjectName === 'New Project') {
+    // If project name is empty or "New Project", show dialog to get name
+    if (!currentProjectName || currentProjectName === 'New Project') {
       setShowSaveNameDialog(true);
     } else {
       // Save with existing name
@@ -482,18 +483,33 @@ function App() {
   const confirmDelete = () => {
     if (currentProjectId) {
       deleteProject(currentProjectId);
-      setProjectList(getProjectList());
+      const updatedList = getProjectList();
+      setProjectList(updatedList);
+
+      // Check if there are other projects to load
+      if (updatedList.length > 0) {
+        // Load the most recent remaining project
+        const mostRecent = getMostRecentProject();
+        if (mostRecent) {
+          setConfig(mostRecent.config);
+          setSvgContent(mostRecent.svgContent);
+          setPlacedDevices(mostRecent.placedDevices);
+          setConnections(mostRecent.connections);
+          setCurrentProjectId(mostRecent.id);
+          setCurrentProjectName(mostRecent.name);
+        }
+      } else {
+        // No projects left - set empty state
+        setConfig(defaultConfig);
+        setSvgContent('');  // Empty floor plan
+        setPlacedDevices([]);
+        setConnections([]);
+        setCurrentProjectId(null);
+        setCurrentProjectName('');  // Empty name (no unsaved project)
+      }
+      setSelectedDeviceId(null);
     }
     setShowDeleteConfirm(false);
-    // Reset to default state
-    setConfig(defaultConfig);
-    const newPlan = generateFloorPlan(defaultConfig);
-    setSvgContent(newPlan);
-    setPlacedDevices([]);
-    setConnections([]);
-    setSelectedDeviceId(null);
-    setCurrentProjectId(null);
-    setCurrentProjectName('New Project');
     setSaveNotification('Project deleted');
     setTimeout(() => setSaveNotification(null), 2000);
   };
@@ -1136,6 +1152,7 @@ function App() {
             if (!svgContent) return null;
             return generateExcelBlob(currentProjectName, svgContent);
           }}
+          isProjectSaved={!!currentProjectId}
         />
 
         {/* Hidden file input for config import */}
@@ -1210,13 +1227,21 @@ function App() {
                   </button>
                   <button
                     onClick={handleSave}
-                    className="px-3 py-1.5 text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors"
+                    disabled={!svgContent}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${svgContent
+                      ? 'text-white bg-blue-500 hover:bg-blue-600'
+                      : 'text-gray-400 bg-gray-200 cursor-not-allowed'
+                      }`}
                   >
                     Save
                   </button>
                   <button
                     onClick={handleDelete}
-                    className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                    disabled={!svgContent || !currentProjectId}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${svgContent && currentProjectId
+                      ? 'text-red-600 bg-red-50 hover:bg-red-100'
+                      : 'text-gray-400 bg-gray-100 cursor-not-allowed'
+                      }`}
                   >
                     Delete
                   </button>
@@ -1313,14 +1338,16 @@ function App() {
         </div>
 
         {/* Right Sidebar - Unified Control Panel and Property Panel */}
-        <div className={`${isUnifiedSidebarCollapsed ? 'w-12' : 'w-[395px]'} flex flex-col bg-gradient-to-b from-slate-800 to-slate-900 border-l border-slate-700 transition-all duration-200`}>
+        {/* Always visible, but locked collapsed when no floor plan */}
+        <div className={`${(isUnifiedSidebarCollapsed || !svgContent) ? 'w-12' : 'w-[395px]'} flex flex-col bg-gradient-to-b from-slate-800 to-slate-900 border-l border-slate-700 transition-all duration-200`}>
           <div className="flex-1 overflow-hidden">
             <UnifiedSidebar
               activeView={activeView}
               activeTab={unifiedSidebarTab}
               onTabChange={setUnifiedSidebarTab}
-              isCollapsed={isUnifiedSidebarCollapsed}
+              isCollapsed={isUnifiedSidebarCollapsed || !svgContent}
               onToggleCollapse={() => setIsUnifiedSidebarCollapsed(prev => !prev)}
+              isLocked={!svgContent}
               modules={panelModules}
               config={loadedConfig}
               matchResult={panelDeviceMatch}
@@ -1332,8 +1359,8 @@ function App() {
               floorPlanProjectName={currentProjectName}
             />
           </div>
-          {/* Docked Property Panel - only when not floating */}
-          {!isUnifiedSidebarCollapsed && !isPropertyPanelFloating && (activeView === 'floorplan' || activeView === 'simulation') && (
+          {/* Docked Property Panel - only when not floating and has floor plan */}
+          {svgContent && !isUnifiedSidebarCollapsed && !isPropertyPanelFloating && (activeView === 'floorplan' || activeView === 'simulation') && (
             <div className="border-t border-slate-700">
               {/* Undock button header */}
               <div className="flex items-center justify-between px-3 py-2 bg-slate-700/50">

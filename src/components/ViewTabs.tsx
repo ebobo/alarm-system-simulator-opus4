@@ -7,7 +7,7 @@ interface ViewTabsProps {
     isPanelEnabled: boolean;
     panelDisabledReason?: 'no-panel' | 'not-saved';
     isSimulationEnabled: boolean;
-    simulationDisabledReason?: 'no-config' | 'config-mismatch' | 'not-saved';
+    simulationDisabledReason?: 'no-config' | 'config-mismatch' | 'not-saved' | 'no-floorplan';
 }
 
 export default function ViewTabs({
@@ -48,7 +48,9 @@ export default function ViewTabs({
     };
 
     const showSimulationDisabledPopup = () => {
-        if (simulationDisabledReason === 'not-saved') {
+        if (simulationDisabledReason === 'no-floorplan') {
+            setPopupMessage('Please generate a floor plan first before accessing the Simulation view.');
+        } else if (simulationDisabledReason === 'not-saved') {
             setPopupMessage('Please save the project first before accessing the Simulation view.');
         } else if (simulationDisabledReason === 'no-config') {
             setPopupMessage('Please load a configuration file (.faconfig) before running the simulation.');

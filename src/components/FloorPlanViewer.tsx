@@ -170,12 +170,24 @@ export default function FloorPlanViewer({
                         position: 'relative',
                     }}
                 >
-                    {/* Floor plan SVG */}
-                    <div
-                        className="bg-white rounded-lg shadow-2xl relative"
-                        dangerouslySetInnerHTML={{ __html: svgContent }}
-                        onClick={handleSvgClick}
-                    />
+                    {/* Floor plan SVG or empty state */}
+                    {svgContent ? (
+                        <div
+                            className="bg-white rounded-lg shadow-2xl relative"
+                            dangerouslySetInnerHTML={{ __html: svgContent }}
+                            onClick={handleSvgClick}
+                        />
+                    ) : (
+                        <div className="flex flex-col items-center justify-center text-center p-12 bg-white/50 rounded-2xl border-2 border-dashed border-slate-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-16 h-16 text-slate-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                            <h3 className="text-lg font-semibold text-slate-600 mb-2">No Floor Plan</h3>
+                            <p className="text-sm text-slate-500 max-w-xs">
+                                Click <span className="font-medium text-orange-500">"Generate New Plan"</span> in the sidebar to create a floor plan
+                            </p>
+                        </div>
+                    )}
                 </TransformComponent>
             </TransformWrapper>
 

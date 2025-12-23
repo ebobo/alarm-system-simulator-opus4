@@ -18,6 +18,7 @@ interface SidebarProps {
     svgContent?: string;
     onConfigDownloaded?: (configText: string) => void;
     onExcelBlob?: () => Blob | null;
+    isProjectSaved?: boolean;
 }
 
 export default function Sidebar({
@@ -35,7 +36,8 @@ export default function Sidebar({
     onToggleCollapse,
     svgContent,
     onConfigDownloaded,
-    onExcelBlob
+    onExcelBlob,
+    isProjectSaved
 }: SidebarProps) {
     // Format relative time for display
     const formatRelativeTime = (isoDate: string): string => {
@@ -143,7 +145,7 @@ export default function Sidebar({
     }
 
     return (
-        <div className="w-56 bg-gradient-to-b from-slate-800 to-slate-900 text-white flex flex-col">
+        <div className="w-[230px] bg-gradient-to-b from-slate-800 to-slate-900 text-white flex flex-col">
             {/* Header */}
             <div className="p-6 border-b border-slate-700">
                 <div className="flex items-center gap-3 mb-2">
@@ -177,8 +179,8 @@ export default function Sidebar({
                 </h2>
 
                 <div className="space-y-2">
-                    {/* Current unsaved project (if working on Generated Plan) */}
-                    {currentProjectName === 'New Project' && (
+                    {/* Current unsaved project (only show if there's actual content) */}
+                    {currentProjectName && !currentProjectId && (
                         <div className="bg-slate-700/50 rounded-lg p-3 border border-orange-500/50 group">
                             <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 bg-orange-500/20 rounded-lg flex items-center justify-center">
@@ -187,7 +189,7 @@ export default function Sidebar({
                                     </svg>
                                 </div>
                                 <div className="flex-1">
-                                    <p className="text-sm font-medium text-white">New Project</p>
+                                    <p className="text-sm font-medium text-white">{currentProjectName}</p>
                                     <p className="text-xs text-orange-400">Unsaved</p>
                                 </div>
                                 <div className="w-2 h-2 rounded-full bg-orange-400"></div>
@@ -228,7 +230,7 @@ export default function Sidebar({
                     })}
 
                     {/* Empty state */}
-                    {projectList.length === 0 && currentProjectName !== 'New Project' && (
+                    {projectList.length === 0 && !currentProjectName && (
                         <div className="text-center py-4 text-slate-500 text-sm">
                             No saved projects
                         </div>
@@ -311,16 +313,10 @@ export default function Sidebar({
                         svgContent={svgContent}
                         onConfigDownloaded={onConfigDownloaded}
                         onExcelBlob={onExcelBlob}
+                        isProjectSaved={isProjectSaved}
                     />
                 </div>
             )}
-
-            {/* Footer */}
-            <div className="p-4 border-t border-slate-700">
-                <p className="text-xs text-slate-500 text-center">
-                    {activeView === 'floorplan' ? 'Floor Plan Designer' : activeView === 'panel' ? 'Panel Simulator' : 'Simulation Mode'}
-                </p>
-            </div>
         </div>
     );
 }

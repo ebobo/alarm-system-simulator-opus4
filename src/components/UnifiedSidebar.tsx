@@ -208,6 +208,9 @@ interface UnifiedSidebarProps {
     isCollapsed: boolean;
     onToggleCollapse: () => void;
 
+    // Lock state - when locked, sidebar stays collapsed and cannot be expanded
+    isLocked?: boolean;
+
     // Panel Status tab props
     modules: PanelModule[];
 
@@ -228,6 +231,7 @@ export default function UnifiedSidebar({
     onTabChange,
     isCollapsed,
     onToggleCollapse,
+    isLocked = false,
     modules,
     config,
     matchResult,
@@ -267,14 +271,19 @@ export default function UnifiedSidebar({
     };
 
     // Collapsed view - narrow strip with icon and vertical label
-    if (isCollapsed) {
+    // When locked, always show collapsed view and disable expand button
+    if (isCollapsed || isLocked) {
         return (
             <div className="flex-1 flex flex-col items-center py-4 text-white overflow-hidden">
-                {/* Expand button at top */}
+                {/* Expand button at top - disabled when locked */}
                 <button
                     onClick={onToggleCollapse}
-                    className="w-8 h-8 mb-4 bg-slate-700 hover:bg-slate-600 rounded-lg flex items-center justify-center transition-colors"
-                    title="Expand Control Panel"
+                    disabled={isLocked}
+                    className={`w-8 h-8 mb-4 rounded-lg flex items-center justify-center transition-colors ${isLocked
+                            ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                            : 'bg-slate-700 hover:bg-slate-600'
+                        }`}
+                    title={isLocked ? 'Generate a floor plan to use Control Panel' : 'Expand Control Panel'}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -282,10 +291,10 @@ export default function UnifiedSidebar({
                 </button>
 
                 {/* Status dot */}
-                <div className={`w-4 h-4 ${getStatusDotColor()} rounded-full mb-4`} title={getStatusText()} />
+                <div className={`w-4 h-4 ${isLocked ? 'bg-slate-600' : getStatusDotColor()} rounded-full mb-4`} title={isLocked ? 'No floor plan' : getStatusText()} />
 
                 {/* Control Panel icon */}
-                <div className={`w-8 h-8 bg-gradient-to-br ${getStatusColor()} rounded-lg flex items-center justify-center mb-4`}>
+                <div className={`w-8 h-8 bg-gradient-to-br ${isLocked ? 'from-slate-600 to-slate-700' : getStatusColor()} rounded-lg flex items-center justify-center mb-4`}>
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
                     </svg>
@@ -294,7 +303,7 @@ export default function UnifiedSidebar({
                 {/* Vertical label */}
                 <div className="flex-1 flex items-center">
                     <span
-                        className="text-xs font-semibold text-slate-400 whitespace-nowrap"
+                        className={`text-xs font-semibold whitespace-nowrap ${isLocked ? 'text-slate-600' : 'text-slate-400'}`}
                         style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
                     >
                         Control Panel

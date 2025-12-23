@@ -16,6 +16,7 @@ interface CloudSyncProps {
     svgContent: string;
     onConfigDownloaded: (configText: string) => void;
     onExcelBlob: () => Blob | null;  // Callback to get Excel blob for upload
+    isProjectSaved?: boolean;  // Whether the project has been saved locally
 }
 
 type SyncStatus = 'offline' | 'idle' | 'syncing' | 'synced' | 'error';
@@ -25,6 +26,7 @@ export default function CloudSync({
     svgContent,
     onConfigDownloaded,
     onExcelBlob,
+    isProjectSaved = true,
 }: CloudSyncProps) {
     const [isOnline, setIsOnline] = useState(false);
     const [cloudProjects, setCloudProjects] = useState<ProjectListItem[]>([]);
@@ -236,10 +238,11 @@ export default function CloudSync({
                     <div className="flex gap-2">
                         <button
                             onClick={() => handleUpload()}
-                            disabled={syncStatus === 'syncing'}
-                            className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 
-                       bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/50
-                       rounded text-xs font-medium transition-colors"
+                            disabled={syncStatus === 'syncing' || !isProjectSaved}
+                            title={!isProjectSaved ? 'Save the project first before uploading to cloud' : undefined}
+                            className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 
+                       ${!isProjectSaved ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/50'}
+                       rounded text-xs font-medium transition-colors`}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
