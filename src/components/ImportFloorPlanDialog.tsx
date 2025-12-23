@@ -222,6 +222,12 @@ export default function ImportFloorPlanDialog({ isOpen, onClose, onImport }: Imp
                                                     public: '#F5F5F5',
                                                     server: '#FCE4EC',
                                                     storage: '#EDE7F6',
+                                                    bedroom: '#E1BEE7',
+                                                    living_room: '#FFE0B2',
+                                                    kitchen: '#C8E6C9',
+                                                    dining: '#FFCDD2',
+                                                    utility: '#CFD8DC',
+                                                    hallway: '#F5F5F5',
                                                 }[room.type] || '#ccc'
                                             }}
                                         />

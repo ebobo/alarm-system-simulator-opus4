@@ -41,6 +41,13 @@ export const ROOM_COLORS_3D: Record<string, string> = {
     public: '#F5F5F5',
     server: '#FCE4EC',
     storage: '#EDE7F6',
+    // Residential types
+    bedroom: '#E1BEE7',      // Purple-ish
+    living_room: '#FFE0B2',  // Orange-ish
+    kitchen: '#C8E6C9',      // Green-ish
+    dining: '#FFCDD2',       // Red-ish
+    utility: '#CFD8DC',      // Blue-grey
+    hallway: '#F5F5F5',      // Same as public
 };
 
 // Constants from floorPlanGenerator
@@ -83,8 +90,8 @@ export function parseRoomsFromSVG(svgContent: string): RoomData[] {
     const bottomRowY = MARGIN + 2 * rowHeight;
 
 
-    // Find public corridor rooms
-    const publicRooms = rooms.filter(r => r.type === 'public');
+    // Find public corridor rooms (including hallways and open living areas)
+    const publicRooms = rooms.filter(r => ['public', 'hallway', 'living_room'].includes(r.type));
     const EPSILON = 5;
     const intervalsOverlap = (a1: number, w1: number, a2: number, w2: number) => {
         return Math.max(a1, a2) < Math.min(a1 + w1, a2 + w2) - EPSILON;
@@ -100,8 +107,8 @@ export function parseRoomsFromSVG(svgContent: string): RoomData[] {
             right: room.x + room.width >= MARGIN + usableWidth - 5,
         };
 
-        // Skip public areas for door logic
-        if (room.type === 'public') continue;
+        // Skip public areas for door logic (they are the hubs)
+        if (['public', 'hallway', 'living_room'].includes(room.type)) continue;
 
         // Special case for entrance - door at bottom facing outside
         if (room.type === 'entrance' || room.label === 'Main Entrance') {

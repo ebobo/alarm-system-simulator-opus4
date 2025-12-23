@@ -25,7 +25,10 @@ export interface ImportResult {
 }
 
 // Valid room types that the app supports
-const VALID_ROOM_TYPES = ['office', 'meeting', 'toilet', 'entrance', 'public', 'server', 'storage'];
+const VALID_ROOM_TYPES = [
+    'office', 'meeting', 'toilet', 'entrance', 'public', 'server', 'storage',
+    'bedroom', 'living_room', 'kitchen', 'dining', 'utility', 'hallway'
+];
 
 // Required data attributes for each room rect
 const REQUIRED_ATTRS = ['data-room-id', 'data-room-type', 'data-room-label', 'data-room-x', 'data-room-y', 'data-room-width', 'data-room-height'];
