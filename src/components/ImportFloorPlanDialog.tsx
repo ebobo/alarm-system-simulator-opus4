@@ -7,7 +7,10 @@ interface ImportFloorPlanDialogProps {
     onImport: (svgContent: string) => void;
 }
 
-type InputMode = 'upload' | 'paste';
+type InputMode = 'upload' | 'paste' | 'ai';
+
+// Backend API URL for AI conversion
+const AI_BACKEND_URL = 'http://localhost:3002';
 
 export default function ImportFloorPlanDialog({ isOpen, onClose, onImport }: ImportFloorPlanDialogProps) {
     const [inputMode, setInputMode] = useState<InputMode>('upload');
@@ -16,7 +19,9 @@ export default function ImportFloorPlanDialog({ isOpen, onClose, onImport }: Imp
     const [fileName, setFileName] = useState<string>('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [pastedCode, setPastedCode] = useState('');
+    const [aiError, setAiError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const imageInputRef = useRef<HTMLInputElement>(null);
 
     const resetState = useCallback(() => {
         setImportResult(null);
@@ -24,6 +29,7 @@ export default function ImportFloorPlanDialog({ isOpen, onClose, onImport }: Imp
         setDragActive(false);
         setIsProcessing(false);
         setPastedCode('');
+        setAiError(null);
     }, []);
 
     const handleClose = useCallback(() => {
@@ -74,6 +80,49 @@ export default function ImportFloorPlanDialog({ isOpen, onClose, onImport }: Imp
         }
     }, []);
 
+    // AI Image conversion
+    const processImageWithAI = useCallback(async (file: File) => {
+        if (!file.type.startsWith('image/')) {
+            setAiError('Please select an image file (PNG, JPG, etc.)');
+            return;
+        }
+
+        setIsProcessing(true);
+        setFileName(file.name);
+        setAiError(null);
+        setImportResult(null);
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch(`${AI_BACKEND_URL}/api/convert-image`, {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.svg) {
+                // Validate the SVG from AI
+                const result = importSVG(data.svg);
+                setImportResult(result);
+                if (result.success) {
+                    setFileName(`AI Generated (${data.roomCount} rooms)`);
+                }
+            } else {
+                setAiError(data.error || 'Failed to convert image');
+                if (data.validationErrors) {
+                    setAiError(`${data.error}: ${data.validationErrors.join(', ')}`);
+                }
+            }
+        } catch (err) {
+            setAiError(err instanceof Error ? err.message : 'Failed to connect to AI service');
+        } finally {
+            setIsProcessing(false);
+        }
+    }, []);
+
     const handleDrag = useCallback((e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -90,15 +139,25 @@ export default function ImportFloorPlanDialog({ isOpen, onClose, onImport }: Imp
         setDragActive(false);
 
         if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            processFile(e.dataTransfer.files[0]);
+            if (inputMode === 'ai') {
+                processImageWithAI(e.dataTransfer.files[0]);
+            } else {
+                processFile(e.dataTransfer.files[0]);
+            }
         }
-    }, [processFile]);
+    }, [processFile, processImageWithAI, inputMode]);
 
     const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             processFile(e.target.files[0]);
         }
     }, [processFile]);
+
+    const handleImageChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            processImageWithAI(e.target.files[0]);
+        }
+    }, [processImageWithAI]);
 
     const handlePasteValidate = useCallback(() => {
         if (!pastedCode.trim()) {
@@ -123,6 +182,7 @@ export default function ImportFloorPlanDialog({ isOpen, onClose, onImport }: Imp
         setImportResult(null);
         setFileName('');
         setPastedCode('');
+        setAiError(null);
     }, []);
 
     if (!isOpen) return null;
@@ -147,7 +207,7 @@ export default function ImportFloorPlanDialog({ isOpen, onClose, onImport }: Imp
                         </div>
                         <div>
                             <h2 className="text-lg font-semibold text-white">Import Floor Plan</h2>
-                            <p className="text-xs text-slate-400">Upload file or paste SVG code</p>
+                            <p className="text-xs text-slate-400">Upload SVG, paste code, or use AI</p>
                         </div>
                     </div>
                     <button
@@ -175,7 +235,7 @@ export default function ImportFloorPlanDialog({ isOpen, onClose, onImport }: Imp
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                             </svg>
-                            Upload File
+                            SVG
                         </button>
                         <button
                             onClick={() => handleModeChange('paste')}
@@ -188,11 +248,24 @@ export default function ImportFloorPlanDialog({ isOpen, onClose, onImport }: Imp
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                             </svg>
-                            Paste Code
+                            Paste
+                        </button>
+                        <button
+                            onClick={() => handleModeChange('ai')}
+                            className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2
+                                ${inputMode === 'ai'
+                                    ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50'
+                                    : 'bg-slate-700/50 text-slate-400 hover:bg-slate-700 border border-transparent'
+                                }`}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                            </svg>
+                            AI Image
                         </button>
                     </div>
 
-                    {/* Upload Mode */}
+                    {/* Upload SVG Mode */}
                     {inputMode === 'upload' && (
                         <div
                             onDragEnter={handleDrag}
@@ -266,12 +339,7 @@ export default function ImportFloorPlanDialog({ isOpen, onClose, onImport }: Imp
                                     setPastedCode(e.target.value);
                                     setImportResult(null);
                                 }}
-                                placeholder="Paste your SVG code here...
-
-Example:
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 900 700'>
-  <rect data-room-id='room-1' data-room-type='bedroom' ... />
-</svg>"
+                                placeholder="Paste your SVG code here..."
                                 className={`w-full h-40 px-4 py-3 bg-slate-700/50 border rounded-xl text-sm text-slate-200 placeholder-slate-500 resize-none focus:outline-none focus:ring-2 transition-all font-mono
                                     ${importResult?.success
                                         ? 'border-emerald-500 focus:ring-emerald-500/50'
@@ -289,12 +357,7 @@ Example:
                                         : 'bg-slate-700/50 text-slate-500 cursor-not-allowed'
                                     }`}
                             >
-                                {isProcessing ? (
-                                    <>
-                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                        Validating...
-                                    </>
-                                ) : importResult?.success ? (
+                                {importResult?.success ? (
                                     <>
                                         <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -310,6 +373,85 @@ Example:
                                     </>
                                 )}
                             </button>
+                        </div>
+                    )}
+
+                    {/* AI Image Mode */}
+                    {inputMode === 'ai' && (
+                        <div
+                            onDragEnter={handleDrag}
+                            onDragLeave={handleDrag}
+                            onDragOver={handleDrag}
+                            onDrop={handleDrop}
+                            onClick={() => imageInputRef.current?.click()}
+                            className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all
+                                ${dragActive
+                                    ? 'border-purple-400 bg-purple-500/10'
+                                    : importResult?.success
+                                        ? 'border-emerald-500 bg-emerald-500/10'
+                                        : aiError
+                                            ? 'border-red-500 bg-red-500/10'
+                                            : 'border-slate-600 hover:border-purple-500/50 hover:bg-purple-500/5'
+                                }`}
+                        >
+                            <input
+                                ref={imageInputRef}
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageChange}
+                                className="hidden"
+                            />
+
+                            {isProcessing ? (
+                                <div className="flex flex-col items-center gap-3">
+                                    <div className="w-10 h-10 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+                                    <p className="text-slate-300">AI is analyzing your floor plan...</p>
+                                    <p className="text-slate-500 text-xs">This may take 10-30 seconds</p>
+                                </div>
+                            ) : importResult?.success ? (
+                                <div className="flex flex-col items-center gap-3">
+                                    <div className="w-12 h-12 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p className="text-emerald-400 font-medium">{fileName}</p>
+                                        <p className="text-slate-400 text-sm mt-1">
+                                            {importResult.rooms?.length} rooms detected
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center gap-3">
+                                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-full flex items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p className="text-white font-medium">
+                                            {dragActive ? 'Drop image here' : 'Upload floor plan image'}
+                                        </p>
+                                        <p className="text-slate-400 text-sm mt-1">
+                                            PNG, JPG - AI will convert to SVG
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* AI Error */}
+                    {aiError && (
+                        <div className="mt-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                            <div className="flex items-center gap-2 mb-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span className="text-red-400 font-medium text-sm">AI Conversion Error</span>
+                            </div>
+                            <p className="text-red-300 text-sm">{aiError}</p>
                         </div>
                     )}
 
@@ -369,9 +511,10 @@ Example:
 
                     {/* Help text */}
                     <p className="mt-4 text-xs text-slate-500 text-center">
-                        SVG must contain rect elements with data-room-* attributes.
-                        <br />
-                        Use Gemini or Claude to generate compatible SVGs from floor plan images.
+                        {inputMode === 'ai'
+                            ? 'AI conversion requires the fire-alarm-ai backend running on port 3002'
+                            : 'SVG must contain rect elements with data-room-* attributes'
+                        }
                     </p>
                 </div>
 
