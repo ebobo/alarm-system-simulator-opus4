@@ -6,6 +6,7 @@ import FloorPlanViewer from './components/FloorPlanViewer';
 import Sidebar from './components/Sidebar';
 import ConfigModal from './components/ConfigModal';
 import SaveNameDialog from './components/SaveNameDialog';
+import ImportFloorPlanDialog from './components/ImportFloorPlanDialog';
 import ViewTabs from './components/ViewTabs';
 import PanelView from './views/PanelView';
 import SimulationView from './views/SimulationView';
@@ -156,6 +157,7 @@ function App() {
   const [showNewProjectConfirm, setShowNewProjectConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showSaveNameDialog, setShowSaveNameDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
   // Project management state
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
@@ -406,6 +408,19 @@ function App() {
     // Reset to new unsaved project
     setCurrentProjectId(null);
     setCurrentProjectName('New Project');
+  };
+
+  // Handle importing an SVG floor plan
+  const handleImportFloorPlan = (importedSvg: string) => {
+    setSvgContent(importedSvg);
+    setPlacedDevices([]);
+    setConnections([]);
+    setSelectedDeviceId(null);
+    // Reset to new unsaved project
+    setCurrentProjectId(null);
+    setCurrentProjectName('Imported Floor Plan');
+    setSaveNotification('Floor plan imported!');
+    setTimeout(() => setSaveNotification(null), 2000);
   };
 
   const handleConfigApply = (newConfig: RoomConfig) => {
@@ -1130,6 +1145,7 @@ function App() {
           onGenerate={handleGenerate}
           onOpenConfig={() => setIsConfigOpen(true)}
           onExport={handleExport}
+          onImportFloorPlan={() => setShowImportDialog(true)}
           projectList={projectList}
           currentProjectId={currentProjectId}
           currentProjectName={currentProjectName}
@@ -1545,6 +1561,13 @@ function App() {
           isOpen={showSaveNameDialog}
           onSave={handleSaveWithName}
           onCancel={() => setShowSaveNameDialog(false)}
+        />
+
+        {/* Import Floor Plan Dialog */}
+        <ImportFloorPlanDialog
+          isOpen={showImportDialog}
+          onClose={() => setShowImportDialog(false)}
+          onImport={handleImportFloorPlan}
         />
 
         {/* New Project Confirmation Modal */}
