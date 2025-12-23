@@ -1,7 +1,7 @@
 // Floor Plan Generator with Central Hub Architecture
 // All rooms connect directly to the public corridor
 
-export type RoomType = 'office' | 'meeting' | 'toilet' | 'entrance' | 'public' | 'server' | 'storage';
+export type RoomType = 'office' | 'meeting' | 'toilet' | 'entrance' | 'public' | 'server' | 'storage' | 'bedroom' | 'living_room' | 'kitchen' | 'dining' | 'utility' | 'hallway';
 
 export interface RoomConfig {
     offices: number;
@@ -25,10 +25,17 @@ const ROOM_COLORS: Record<RoomType, string> = {
     office: '#E8F4FD',
     meeting: '#FFF3E0',
     toilet: '#E8F5E9',
-    entrance: '#F5F5F5',  // Same as public
+    entrance: '#F5F5F5',
     public: '#F5F5F5',
     server: '#FCE4EC',
     storage: '#EDE7F6',
+    // Residential
+    bedroom: '#E1BEE7',
+    living_room: '#FFE0B2',
+    kitchen: '#C8E6C9',
+    dining: '#FFCDD2',
+    utility: '#CFD8DC',
+    hallway: '#F5F5F5',
 };
 
 const ROOM_LABELS: Record<RoomType, string> = {
@@ -39,17 +46,31 @@ const ROOM_LABELS: Record<RoomType, string> = {
     public: 'Public Area',
     server: 'Server Room',
     storage: 'Storage',
+    // Residential
+    bedroom: 'Bedroom',
+    living_room: 'Living Room',
+    kitchen: 'Kitchen',
+    dining: 'Dining Room',
+    utility: 'Utility',
+    hallway: 'Hallway',
 };
 
 // Room size weights - more balanced (less variance)
 const SIZE_WEIGHTS: Record<RoomType, number> = {
-    office: 1.4,    // Must be wider than toilet
-    meeting: 1.8,   // Just 1.5x office, not 2x
+    office: 1.4,
+    meeting: 1.8,
     toilet: 1.0,
     entrance: 1.5,
     public: 1.0,
-    server: 0.9,    // Smaller than toilet
-    storage: 0.9,   // Smaller than toilet
+    server: 0.9,
+    storage: 0.9,
+    // Residential
+    bedroom: 1.4,
+    living_room: 2.0,
+    kitchen: 1.3,
+    dining: 1.4,
+    utility: 0.8,
+    hallway: 1.0,
 };
 
 const MIN_ROOM_SIZE = 100;

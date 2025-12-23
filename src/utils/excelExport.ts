@@ -21,8 +21,30 @@ interface DeviceListEntry {
 function extractRoomsFromSVG(svgContent: string): { type: RoomType; label: string }[] {
     const rooms: { type: RoomType; label: string }[] = [];
 
-    // Parse data-unique-label attribute to find distinct rooms
-    // This allows finding "Toilet 1", "Toilet 2" even if visual text is just "Toilet"
+    // Try parsing with data-room-type and data-room-label first (imported SVGs)
+    const rectRegex = /<rect[^>]*data-room-id[^>]*>/g;
+    let rectMatch;
+
+    while ((rectMatch = rectRegex.exec(svgContent)) !== null) {
+        const rect = rectMatch[0];
+
+        // Extract attributes
+        const typeMatch = rect.match(/data-room-type="([^"]+)"/);
+        const labelMatch = rect.match(/data-room-label="([^"]+)"/);
+
+        if (typeMatch && labelMatch) {
+            const roomType = typeMatch[1] as RoomType;
+            const label = labelMatch[1];
+            rooms.push({ type: roomType, label });
+        }
+    }
+
+    // If we found rooms via data-room-* attributes, return them
+    if (rooms.length > 0) {
+        return rooms;
+    }
+
+    // Fallback: Parse data-unique-label attribute (legacy generated SVGs)
     const labelRegex = /data-unique-label="([^"]+)"/g;
     let match;
 
@@ -32,20 +54,35 @@ function extractRoomsFromSVG(svgContent: string): { type: RoomType; label: strin
         // Determine room type from label
         let roomType: RoomType | null = null;
 
+        // Commercial types
         if (uniqueLabel.startsWith('Office')) {
             roomType = 'office';
         } else if (uniqueLabel.startsWith('Meeting Room')) {
             roomType = 'meeting';
-        } else if (uniqueLabel.startsWith('Toilet')) {
+        } else if (uniqueLabel.startsWith('Toilet') || uniqueLabel.startsWith('Bathroom')) {
             roomType = 'toilet';
-        } else if (uniqueLabel === 'Main Entrance') {
+        } else if (uniqueLabel === 'Main Entrance' || uniqueLabel.startsWith('Entrance')) {
             roomType = 'entrance';
-        } else if (uniqueLabel === 'Public Area') {
+        } else if (uniqueLabel === 'Public Area' || uniqueLabel.startsWith('Corridor')) {
             roomType = 'public';
         } else if (uniqueLabel.startsWith('Server Room')) {
             roomType = 'server';
         } else if (uniqueLabel.startsWith('Storage')) {
             roomType = 'storage';
+        }
+        // Residential types
+        else if (uniqueLabel.startsWith('Bedroom') || uniqueLabel.startsWith('Master Bedroom')) {
+            roomType = 'bedroom';
+        } else if (uniqueLabel.startsWith('Living Room') || uniqueLabel.startsWith('Living')) {
+            roomType = 'living_room';
+        } else if (uniqueLabel.startsWith('Kitchen')) {
+            roomType = 'kitchen';
+        } else if (uniqueLabel.startsWith('Dining')) {
+            roomType = 'dining';
+        } else if (uniqueLabel.startsWith('Utility') || uniqueLabel.startsWith('Laundry')) {
+            roomType = 'utility';
+        } else if (uniqueLabel.startsWith('Hallway') || uniqueLabel.startsWith('Hall')) {
+            roomType = 'hallway';
         }
 
         if (roomType) {
