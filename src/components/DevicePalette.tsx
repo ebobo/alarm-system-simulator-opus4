@@ -66,10 +66,10 @@ function DraggableDeviceItem({ deviceType }: DraggableDeviceItemProps) {
             ref={setNodeRef}
             {...listeners}
             {...attributes}
-            className="bg-slate-700/50 hover:bg-slate-700 rounded-lg p-3 cursor-grab active:cursor-grabbing
+            className="bg-slate-700/50 hover:bg-slate-700 rounded-lg p-2 cursor-grab active:cursor-grabbing
                        transition-all duration-200 border border-slate-600/50"
         >
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col items-center gap-1">
                 {/* Device icon - different shape based on category */}
                 <div className={`w-8 h-8 ${styles.bg} rounded-lg flex items-center justify-center ${styles.border} border`}>
                     {deviceType.id === 'panel' ? (
@@ -121,6 +121,30 @@ function DraggableDeviceItem({ deviceType }: DraggableDeviceItemProps) {
                             <path d="M9 10 Q7 12 9 14" strokeWidth="1.5" strokeLinecap="round" />
                             <path d="M15 10 Q17 12 15 14" strokeWidth="1.5" strokeLinecap="round" />
                         </svg>
+                    ) : deviceType.id === 'input-unit' ? (
+                        // Input Unit icon - square with arrow pointing in
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className={`w-4 h-4 ${styles.icon}`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth="2" />
+                            <path d="M12 8v8M9 11l3-3 3 3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                    ) : deviceType.id === 'output-unit' ? (
+                        // Output Unit icon - square with arrow pointing out
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className={`w-4 h-4 ${styles.icon}`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth="2" />
+                            <path d="M12 8v8M9 13l3 3 3-3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
                     ) : deviceType.id === 'AG-head' ? (
                         // AG Head icon - white dome with red LED (smaller version)
                         <svg
@@ -135,7 +159,7 @@ function DraggableDeviceItem({ deviceType }: DraggableDeviceItemProps) {
                             <circle cx="12" cy="12" r="2" strokeWidth="1" fill="#EF4444" />
                         </svg>
                     ) : (
-                        // Circle icon for detectors
+                        // Circle icon for detectors (AG Socket)
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             className={`w-4 h-4 ${styles.icon}`}
@@ -149,14 +173,12 @@ function DraggableDeviceItem({ deviceType }: DraggableDeviceItemProps) {
                     )}
                 </div>
 
-                <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">{deviceType.name}</p>
-                    <p className="text-xs text-slate-400">{deviceType.terminals.length} terminals</p>
-                </div>
+                <p className="text-xs font-medium text-white text-center leading-tight">{deviceType.name}</p>
             </div>
         </div>
     );
 }
+
 
 /**
  * Right-side panel containing draggable device palette
@@ -249,17 +271,23 @@ export default function DevicePalette({ isCollapsed, onToggleCollapse }: DeviceP
                     Loop Devices
                 </h3>
 
-                <div className="space-y-2">
-                    {deviceTypes.map((deviceType) => (
-                        <DraggableDeviceItem key={deviceType.id} deviceType={deviceType} />
-                    ))}
-                </div>
+                {/* 2-column grid layout */}
+                <div className="grid grid-cols-2 gap-2">
+                    {/* Row 1: AG Socket, AG Head */}
+                    <DraggableDeviceItem deviceType={deviceTypes.find(d => d.id === 'AG-socket')!} />
+                    <DraggableDeviceItem deviceType={deviceTypes.find(d => d.id === 'AG-head')!} />
 
-                {/* Future devices placeholder */}
-                <div className="mt-4 pt-4 border-t border-slate-700/50">
-                    <p className="text-xs text-slate-500 text-center italic">
-                        More devices coming soon
-                    </p>
+                    {/* Row 2: MCP, Sounder */}
+                    <DraggableDeviceItem deviceType={deviceTypes.find(d => d.id === 'mcp')!} />
+                    <DraggableDeviceItem deviceType={deviceTypes.find(d => d.id === 'sounder')!} />
+
+                    {/* Row 3: Input Unit, Output Unit */}
+                    <DraggableDeviceItem deviceType={deviceTypes.find(d => d.id === 'input-unit')!} />
+                    <DraggableDeviceItem deviceType={deviceTypes.find(d => d.id === 'output-unit')!} />
+
+                    {/* Row 4: Loop Driver, Panel */}
+                    <DraggableDeviceItem deviceType={deviceTypes.find(d => d.id === 'loop-driver')!} />
+                    <DraggableDeviceItem deviceType={deviceTypes.find(d => d.id === 'panel')!} />
                 </div>
             </div>
 

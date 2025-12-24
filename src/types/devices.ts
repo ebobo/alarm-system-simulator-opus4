@@ -134,6 +134,24 @@ const PANEL_TERMINALS: TerminalDefinition[] = [
     { id: 'top', pairIndex: 0, polarity: '+', relativeX: 0, relativeY: -0.5, label: 'T' },
 ];
 
+// Terminal positions for Input Unit:
+// 4 terminals at top, bottom, left, right
+const INPUT_UNIT_TERMINALS: TerminalDefinition[] = [
+    { id: 'top', pairIndex: 0, polarity: '+', relativeX: 0, relativeY: -0.5, label: 'T' },
+    { id: 'right', pairIndex: 1, polarity: '+', relativeX: 0.5, relativeY: 0, label: 'R' },
+    { id: 'bottom', pairIndex: 2, polarity: '+', relativeX: 0, relativeY: 0.5, label: 'B' },
+    { id: 'left', pairIndex: 3, polarity: '+', relativeX: -0.5, relativeY: 0, label: 'L' },
+];
+
+// Terminal positions for Output Unit:
+// 4 terminals at top, bottom, left, right
+const OUTPUT_UNIT_TERMINALS: TerminalDefinition[] = [
+    { id: 'top', pairIndex: 0, polarity: '+', relativeX: 0, relativeY: -0.5, label: 'T' },
+    { id: 'right', pairIndex: 1, polarity: '+', relativeX: 0.5, relativeY: 0, label: 'R' },
+    { id: 'bottom', pairIndex: 2, polarity: '+', relativeX: 0, relativeY: 0.5, label: 'B' },
+    { id: 'left', pairIndex: 3, polarity: '+', relativeX: -0.5, relativeY: 0, label: 'L' },
+];
+
 /**
  * Registry of all available device types
  */
@@ -191,6 +209,24 @@ export const DEVICE_TYPES: Record<string, DeviceType> = {
         width: 35,
         height: 25,
         terminals: PANEL_TERMINALS,
+    },
+    'input-unit': {
+        id: 'input-unit',
+        name: 'Input Unit',
+        category: 'io',
+        description: 'Input/monitoring module for external alarm inputs',
+        width: 36,
+        height: 36,
+        terminals: INPUT_UNIT_TERMINALS,
+    },
+    'output-unit': {
+        id: 'output-unit',
+        name: 'Output Unit',
+        category: 'io',
+        description: 'Output module for controlling external equipment',
+        width: 36,
+        height: 36,
+        terminals: OUTPUT_UNIT_TERMINALS,
     },
 };
 
