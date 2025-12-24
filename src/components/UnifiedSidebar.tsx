@@ -132,28 +132,28 @@ function DraggableDeviceItem({ deviceType }: DraggableDeviceItemProps) {
                             <path d="M15 10 Q17 12 15 14" strokeWidth="1.5" strokeLinecap="round" />
                         </svg>
                     ) : deviceType.id === 'input-unit' ? (
-                        // Input Unit icon - rectangular with IN label
+                        // Input Unit icon - square with arrow pointing in
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            className={`w-6 h-4 ${styles.icon}`}
+                            className={`w-5 h-5 ${styles.icon}`}
                             fill="none"
-                            viewBox="0 0 24 16"
+                            viewBox="0 0 24 24"
                             stroke="currentColor"
                         >
-                            <rect x="1" y="1" width="22" height="14" rx="2" strokeWidth="2" />
-                            <text x="12" y="11" textAnchor="middle" fontSize="7" fill="currentColor" stroke="none">IN</text>
+                            <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth="2" />
+                            <path d="M12 8v8M9 11l3-3 3 3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                     ) : deviceType.id === 'output-unit' ? (
-                        // Output Unit icon - rectangular with OUT label
+                        // Output Unit icon - square with arrow pointing out
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            className={`w-6 h-4 ${styles.icon}`}
+                            className={`w-5 h-5 ${styles.icon}`}
                             fill="none"
-                            viewBox="0 0 24 16"
+                            viewBox="0 0 24 24"
                             stroke="currentColor"
                         >
-                            <rect x="1" y="1" width="22" height="14" rx="2" strokeWidth="2" />
-                            <text x="12" y="11" textAnchor="middle" fontSize="6" fill="currentColor" stroke="none">OUT</text>
+                            <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth="2" />
+                            <path d="M12 8v8M9 13l3 3 3-3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                     ) : deviceType.id === 'AG-head' ? (
                         // AG Head icon - white dome with red LED (smaller version)

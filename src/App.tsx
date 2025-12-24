@@ -97,27 +97,27 @@ function DeviceDragPreview({ deviceTypeId }: { deviceTypeId: string | null }) {
   }
 
   if (deviceTypeId === 'input-unit') {
-    // Input Unit preview - rectangular with "IN" label and top loop connector
+    // Input Unit preview - square with "IN" label and top loop connector
     return (
-      <svg width="40" height="30" viewBox="-20 -15 40 30" className="drop-shadow-lg">
-        <rect x="-18" y="-13" width="36" height="26" rx="3" fill="#E8E4DA" stroke="#1E293B" strokeWidth="2" />
-        <rect x="-12" y="-7" width="24" height="14" rx="2" fill="#D4D0C6" stroke="#64748B" strokeWidth="1.5" />
-        <text x="0" y="4" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#334155">IN</text>
+      <svg width="40" height="40" viewBox="-20 -20 40 40" className="drop-shadow-lg">
+        <rect x="-18" y="-18" width="36" height="36" rx="3" fill="#E8E4DA" stroke="#1E293B" strokeWidth="2" />
+        <rect x="-12" y="-12" width="24" height="24" rx="2" fill="#D4D0C6" stroke="#64748B" strokeWidth="1.5" />
+        <text x="0" y="4" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#334155">IN</text>
         {/* Terminal - top only */}
-        <circle cx="0" cy="-13" r="3" fill="#22C55E" stroke="#15803D" strokeWidth="1.5" />
+        <circle cx="0" cy="-18" r="3" fill="#22C55E" stroke="#15803D" strokeWidth="1.5" />
       </svg>
     );
   }
 
   if (deviceTypeId === 'output-unit') {
-    // Output Unit preview - rectangular with "OUT" label and top loop connector
+    // Output Unit preview - square with "OUT" label and top loop connector
     return (
-      <svg width="40" height="30" viewBox="-20 -15 40 30" className="drop-shadow-lg">
-        <rect x="-18" y="-13" width="36" height="26" rx="3" fill="#E8E4DA" stroke="#1E293B" strokeWidth="2" />
-        <rect x="-12" y="-7" width="24" height="14" rx="2" fill="#D4D0C6" stroke="#64748B" strokeWidth="1.5" />
-        <text x="0" y="4" textAnchor="middle" fontSize="7" fontWeight="bold" fill="#334155">OUT</text>
+      <svg width="40" height="40" viewBox="-20 -20 40 40" className="drop-shadow-lg">
+        <rect x="-18" y="-18" width="36" height="36" rx="3" fill="#E8E4DA" stroke="#1E293B" strokeWidth="2" />
+        <rect x="-12" y="-12" width="24" height="24" rx="2" fill="#D4D0C6" stroke="#64748B" strokeWidth="1.5" />
+        <text x="0" y="4" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#334155">OUT</text>
         {/* Terminal - top only */}
-        <circle cx="0" cy="-13" r="3" fill="#22C55E" stroke="#15803D" strokeWidth="1.5" />
+        <circle cx="0" cy="-18" r="3" fill="#22C55E" stroke="#15803D" strokeWidth="1.5" />
       </svg>
     );
   }
