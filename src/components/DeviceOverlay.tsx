@@ -285,6 +285,114 @@ function DraggableDevice({
                             P
                         </text>
                     </>
+                ) : device.typeId === 'input-unit' ? (
+                    <>
+                        {/* Selection ring for Input Unit */}
+                        {isSelected && (
+                            <rect
+                                x={-deviceType.width / 2 - 4}
+                                y={-deviceType.height / 2 - 4}
+                                width={deviceType.width + 8}
+                                height={deviceType.height + 8}
+                                rx="6"
+                                fill="none"
+                                stroke="#3B82F6"
+                                strokeWidth="2"
+                                strokeDasharray="4 2"
+                            />
+                        )}
+
+                        {/* Input Unit body - beige/cream color like the hardware */}
+                        <rect
+                            x={-deviceType.width / 2}
+                            y={-deviceType.height / 2}
+                            width={deviceType.width}
+                            height={deviceType.height}
+                            rx="4"
+                            fill="#E8E4DA"
+                            stroke="#1E293B"
+                            strokeWidth="2"
+                        />
+
+                        {/* Inner rectangle - label area */}
+                        <rect
+                            x={-deviceType.width / 2 + 6}
+                            y={-deviceType.height / 2 + 6}
+                            width={deviceType.width - 12}
+                            height={deviceType.height - 12}
+                            rx="3"
+                            fill="#D4D0C6"
+                            stroke="#64748B"
+                            strokeWidth="1.5"
+                        />
+
+                        {/* IN Label */}
+                        <text
+                            x="0"
+                            y="4"
+                            textAnchor="middle"
+                            fontSize="10"
+                            fontWeight="bold"
+                            fill="#334155"
+                            style={{ pointerEvents: 'none' }}
+                        >
+                            IN
+                        </text>
+                    </>
+                ) : device.typeId === 'output-unit' ? (
+                    <>
+                        {/* Selection ring for Output Unit */}
+                        {isSelected && (
+                            <rect
+                                x={-deviceType.width / 2 - 4}
+                                y={-deviceType.height / 2 - 4}
+                                width={deviceType.width + 8}
+                                height={deviceType.height + 8}
+                                rx="6"
+                                fill="none"
+                                stroke="#3B82F6"
+                                strokeWidth="2"
+                                strokeDasharray="4 2"
+                            />
+                        )}
+
+                        {/* Output Unit body - beige/cream color like the hardware */}
+                        <rect
+                            x={-deviceType.width / 2}
+                            y={-deviceType.height / 2}
+                            width={deviceType.width}
+                            height={deviceType.height}
+                            rx="4"
+                            fill="#E8E4DA"
+                            stroke="#1E293B"
+                            strokeWidth="2"
+                        />
+
+                        {/* Inner rectangle - label area */}
+                        <rect
+                            x={-deviceType.width / 2 + 6}
+                            y={-deviceType.height / 2 + 6}
+                            width={deviceType.width - 12}
+                            height={deviceType.height - 12}
+                            rx="3"
+                            fill="#D4D0C6"
+                            stroke="#64748B"
+                            strokeWidth="1.5"
+                        />
+
+                        {/* OUT Label */}
+                        <text
+                            x="0"
+                            y="4"
+                            textAnchor="middle"
+                            fontSize="9"
+                            fontWeight="bold"
+                            fill="#334155"
+                            style={{ pointerEvents: 'none' }}
+                        >
+                            OUT
+                        </text>
+                    </>
                 ) : device.typeId === 'AG-head' ? (
                     <>
                         {/* Selection ring for AG Head */}
@@ -433,8 +541,11 @@ function ProjectionGuide({
     const isMcp = deviceTypeId === 'mcp';
     const isSounder = deviceTypeId === 'sounder';
     const isAGHead = deviceTypeId === 'AG-head';
-    const sizeX = isLoopDriver ? 50 * scale : isPanel ? 35 * scale : isMcp ? 35 * scale : isSounder ? 38 * scale : isAGHead ? 30 * scale : 48 * scale;
-    const sizeY = isLoopDriver ? 30 * scale : isPanel ? 25 * scale : isMcp ? 35 * scale : isSounder ? 38 * scale : isAGHead ? 30 * scale : 48 * scale;
+    const isInputUnit = deviceTypeId === 'input-unit';
+    const isOutputUnit = deviceTypeId === 'output-unit';
+    const isIOUnit = isInputUnit || isOutputUnit;
+    const sizeX = isLoopDriver ? 50 * scale : isPanel ? 35 * scale : isMcp ? 35 * scale : isSounder ? 38 * scale : isAGHead ? 30 * scale : isIOUnit ? 40 * scale : 48 * scale;
+    const sizeY = isLoopDriver ? 30 * scale : isPanel ? 25 * scale : isMcp ? 35 * scale : isSounder ? 38 * scale : isAGHead ? 30 * scale : isIOUnit ? 30 * scale : 48 * scale;
 
     return (
         <div
@@ -522,6 +633,26 @@ function ProjectionGuide({
                     <line x1="-10" y1="0" x2="10" y2="0" stroke="#F97316" strokeWidth="1" opacity="0.5" />
                     <line x1="0" y1="-10" x2="0" y2="10" stroke="#F97316" strokeWidth="1" opacity="0.5" />
                     <circle r="3" fill="#F97316" opacity="0.8" />
+                </svg>
+            ) : isIOUnit ? (
+                // Rectangular projection for IO Units (green)
+                <svg width={sizeX} height={sizeY} viewBox="-20 -15 40 30">
+                    <rect
+                        x="-18"
+                        y="-13"
+                        width="36"
+                        height="26"
+                        rx="4"
+                        fill="none"
+                        stroke="#22C55E"
+                        strokeWidth="2"
+                        strokeDasharray="6 3"
+                        opacity="0.7"
+                    />
+                    <rect x="-16" y="-11" width="32" height="22" rx="3" fill="#22C55E" opacity="0.15" />
+                    <line x1="-12" y1="0" x2="12" y2="0" stroke="#22C55E" strokeWidth="1" opacity="0.5" />
+                    <line x1="0" y1="-8" x2="0" y2="8" stroke="#22C55E" strokeWidth="1" opacity="0.5" />
+                    <circle r="2" fill="#22C55E" opacity="0.8" />
                 </svg>
             ) : isAGHead ? (
                 // Circular projection for AG Detector (white/gray)

@@ -135,21 +135,15 @@ const PANEL_TERMINALS: TerminalDefinition[] = [
 ];
 
 // Terminal positions for Input Unit:
-// 4 terminals at top, bottom, left, right
+// Single loop connector at top
 const INPUT_UNIT_TERMINALS: TerminalDefinition[] = [
-    { id: 'top', pairIndex: 0, polarity: '+', relativeX: 0, relativeY: -0.5, label: 'T' },
-    { id: 'right', pairIndex: 1, polarity: '+', relativeX: 0.5, relativeY: 0, label: 'R' },
-    { id: 'bottom', pairIndex: 2, polarity: '+', relativeX: 0, relativeY: 0.5, label: 'B' },
-    { id: 'left', pairIndex: 3, polarity: '+', relativeX: -0.5, relativeY: 0, label: 'L' },
+    { id: 'loop', pairIndex: 0, polarity: '+', relativeX: 0, relativeY: -0.5, label: 'LOOP' },
 ];
 
 // Terminal positions for Output Unit:
-// 4 terminals at top, bottom, left, right
+// Single loop connector at top
 const OUTPUT_UNIT_TERMINALS: TerminalDefinition[] = [
-    { id: 'top', pairIndex: 0, polarity: '+', relativeX: 0, relativeY: -0.5, label: 'T' },
-    { id: 'right', pairIndex: 1, polarity: '+', relativeX: 0.5, relativeY: 0, label: 'R' },
-    { id: 'bottom', pairIndex: 2, polarity: '+', relativeX: 0, relativeY: 0.5, label: 'B' },
-    { id: 'left', pairIndex: 3, polarity: '+', relativeX: -0.5, relativeY: 0, label: 'L' },
+    { id: 'loop', pairIndex: 0, polarity: '+', relativeX: 0, relativeY: -0.5, label: 'LOOP' },
 ];
 
 /**
@@ -215,8 +209,8 @@ export const DEVICE_TYPES: Record<string, DeviceType> = {
         name: 'Input Unit',
         category: 'io',
         description: 'Input/monitoring module for external alarm inputs',
-        width: 36,
-        height: 36,
+        width: 40,
+        height: 30,
         terminals: INPUT_UNIT_TERMINALS,
     },
     'output-unit': {
@@ -224,8 +218,8 @@ export const DEVICE_TYPES: Record<string, DeviceType> = {
         name: 'Output Unit',
         category: 'io',
         description: 'Output module for controlling external equipment',
-        width: 36,
-        height: 36,
+        width: 40,
+        height: 30,
         terminals: OUTPUT_UNIT_TERMINALS,
     },
 };
