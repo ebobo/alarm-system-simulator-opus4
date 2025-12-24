@@ -35,10 +35,24 @@ const snapCenterToCursor: Modifier = ({ transform, activatorEvent, active }) => 
       const { clientX, clientY } = activatorEvent;
       const initialRect = active.rect.current.initial;
 
+      // Get device width/height to center properly
+      const deviceTypeId = (active.id as string).replace('palette-', '');
+      const deviceType = getDeviceType(deviceTypeId);
+      // Default to 40x40 if not found (standard icon size)
+      const width = deviceType?.width ?? 40;
+      const height = deviceType?.height ?? 40;
+
       if (initialRect) {
         // Calculate offset to move from initial click position to center of element
-        const offsetX = (clientX - initialRect.left) - initialRect.width / 2;
-        const offsetY = (clientY - initialRect.top) - initialRect.height / 2;
+        // We want the center of the drag preview (width/height) to be at clientX/clientY
+        // transform.x starts at 0 (at initialRect.left)
+        // We want final position left = clientX - width/2
+        // final left = initialRect.left + transform.x
+        // so: initialRect.left + transform.x = clientX - width/2
+        // transform.x = clientX - initialRect.left - width/2
+
+        const offsetX = (clientX - initialRect.left) - width / 2;
+        const offsetY = (clientY - initialRect.top) - height / 2;
 
         return {
           ...transform,
@@ -50,6 +64,8 @@ const snapCenterToCursor: Modifier = ({ transform, activatorEvent, active }) => 
   }
   return transform;
 };
+
+
 
 // SVG Drag preview component - shows the device icon
 function DeviceDragPreview({ deviceTypeId }: { deviceTypeId: string | null }) {
@@ -679,12 +695,11 @@ function App() {
     let currentX: number;
     let currentY: number;
 
-    if (isPaletteItem && active.rect.current.translated) {
-      // For palette items: use the CENTER of the translated rect
-      // This ensures the projection is always centered regardless of where on the card you click
-      const translatedRect = active.rect.current.translated;
-      currentX = translatedRect.left + translatedRect.width / 2;
-      currentY = translatedRect.top + translatedRect.height / 2;
+    if (isPaletteItem) {
+      // For palette items: Use pure mouse position
+      // This works with snapCenterToCursor which centers the visual on the mouse
+      currentX = pointerEvent.clientX + delta.x;
+      currentY = pointerEvent.clientY + delta.y;
     } else {
       // For placed devices: use pointer position + delta
       currentX = pointerEvent.clientX + delta.x;
@@ -796,12 +811,10 @@ function App() {
     let dropX: number;
     let dropY: number;
 
-    if (isPaletteItem && active.rect.current.translated) {
-      // For palette items: use the CENTER of the translated rect
-      // This matches the projection position calculation
-      const translatedRect = active.rect.current.translated;
-      dropX = translatedRect.left + translatedRect.width / 2;
-      dropY = translatedRect.top + translatedRect.height / 2;
+    if (isPaletteItem) {
+      // For palette items: Use pure mouse position
+      dropX = pointerEvent.clientX + delta.x;
+      dropY = pointerEvent.clientY + delta.y;
     } else {
       // For placed devices: use pointer position + delta
       dropX = pointerEvent.clientX + delta.x;
