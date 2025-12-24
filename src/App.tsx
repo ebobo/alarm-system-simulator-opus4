@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { DndContext, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
-
-import type { DragEndEvent, DragStartEvent, DragMoveEvent } from '@dnd-kit/core';
+import type { DragEndEvent, DragStartEvent, DragMoveEvent, Modifier } from '@dnd-kit/core';
 import FloorPlanViewer from './components/FloorPlanViewer';
 import Sidebar from './components/Sidebar';
 import ConfigModal from './components/ConfigModal';
@@ -28,6 +27,29 @@ import type { PlacedDevice, ViewportTransform, Connection, DrawingWire, RoomInfo
 import type { ProjectListEntry } from './types/storage';
 import type { FAConfig } from './types/faconfig';
 import { parseFAConfig } from './utils/faconfigParser';
+
+// Modifier to snap the drag preview to be centered under the cursor
+const snapCenterToCursor: Modifier = ({ transform, activatorEvent, active }) => {
+  if (active && (active.id as string).startsWith('palette-')) {
+    if (activatorEvent instanceof MouseEvent || activatorEvent instanceof PointerEvent) {
+      const { clientX, clientY } = activatorEvent;
+      const initialRect = active.rect.current.initial;
+
+      if (initialRect) {
+        // Calculate offset to move from initial click position to center of element
+        const offsetX = (clientX - initialRect.left) - initialRect.width / 2;
+        const offsetY = (clientY - initialRect.top) - initialRect.height / 2;
+
+        return {
+          ...transform,
+          x: transform.x + offsetX,
+          y: transform.y + offsetY,
+        };
+      }
+    }
+  }
+  return transform;
+};
 
 // SVG Drag preview component - shows the device icon
 function DeviceDragPreview({ deviceTypeId }: { deviceTypeId: string | null }) {
@@ -1691,6 +1713,7 @@ function App() {
       {/* Drag Overlay - shows the device icon while dragging */}
       <DragOverlay
         dropAnimation={null}
+        modifiers={[snapCenterToCursor]}
         style={{
           cursor: 'grabbing',
           pointerEvents: 'none', // Don't block mouse release events
