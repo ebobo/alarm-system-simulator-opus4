@@ -650,12 +650,27 @@ function App() {
     const containerRect = getContainerRect();
     if (!containerRect) return;
 
-    // Calculate current pointer position
-    const currentX = pointerEvent.clientX + delta.x;
-    const currentY = pointerEvent.clientY + delta.y;
+    // Get the drag ID to check if it's a palette item
+    const dragId = active.id as string;
+    const isPaletteItem = dragId.startsWith('palette-');
+
+    let currentX: number;
+    let currentY: number;
+
+    if (isPaletteItem && active.rect.current.translated) {
+      // For palette items: use the CENTER of the translated rect
+      // This ensures the projection is always centered regardless of where on the card you click
+      const translatedRect = active.rect.current.translated;
+      currentX = translatedRect.left + translatedRect.width / 2;
+      currentY = translatedRect.top + translatedRect.height / 2;
+    } else {
+      // For placed devices: use pointer position + delta
+      currentX = pointerEvent.clientX + delta.x;
+      currentY = pointerEvent.clientY + delta.y;
+    }
+
 
     // Check if dragging AG-head (from palette or existing)
-    const dragId = active.id as string;
     let isDraggingDetector = dragId === 'palette-AG-head';
 
     // Also check if dragging an existing placed detector
@@ -755,8 +770,21 @@ function App() {
     const pointerEvent = event.activatorEvent as PointerEvent;
     if (!pointerEvent) return;
 
-    const dropX = pointerEvent.clientX + delta.x;
-    const dropY = pointerEvent.clientY + delta.y;
+    const isPaletteItem = id.startsWith('palette-');
+    let dropX: number;
+    let dropY: number;
+
+    if (isPaletteItem && active.rect.current.translated) {
+      // For palette items: use the CENTER of the translated rect
+      // This matches the projection position calculation
+      const translatedRect = active.rect.current.translated;
+      dropX = translatedRect.left + translatedRect.width / 2;
+      dropY = translatedRect.top + translatedRect.height / 2;
+    } else {
+      // For placed devices: use pointer position + delta
+      dropX = pointerEvent.clientX + delta.x;
+      dropY = pointerEvent.clientY + delta.y;
+    }
 
     // Check if dropped on floor plan area
     const isOverFloorPlan =
@@ -1663,14 +1691,6 @@ function App() {
       {/* Drag Overlay - shows the device icon while dragging */}
       <DragOverlay
         dropAnimation={null}
-        modifiers={[
-          // Center the drag preview under the cursor
-          ({ transform }) => ({
-            ...transform,
-            x: transform.x,  // Keep the x position
-            y: transform.y,  // Keep the y position
-          }),
-        ]}
         style={{
           cursor: 'grabbing',
           pointerEvents: 'none', // Don't block mouse release events
