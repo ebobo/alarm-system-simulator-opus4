@@ -209,8 +209,8 @@ export const DEVICE_TYPES: Record<string, DeviceType> = {
         name: 'Input Unit',
         category: 'io',
         description: 'Input/monitoring module for external alarm inputs',
-        width: 40,
-        height: 40,
+        width: 36,
+        height: 36,
         terminals: INPUT_UNIT_TERMINALS,
     },
     'output-unit': {
@@ -218,8 +218,8 @@ export const DEVICE_TYPES: Record<string, DeviceType> = {
         name: 'Output Unit',
         category: 'io',
         description: 'Output module for controlling external equipment',
-        width: 40,
-        height: 40,
+        width: 36,
+        height: 36,
         terminals: OUTPUT_UNIT_TERMINALS,
     },
 };

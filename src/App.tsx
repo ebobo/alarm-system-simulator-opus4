@@ -137,12 +137,12 @@ function DeviceDragPreview({ deviceTypeId }: { deviceTypeId: string | null }) {
   if (deviceTypeId === 'input-unit') {
     // Input Unit preview - square with "IN" label and top loop connector
     return (
-      <svg width="40" height="40" viewBox="-20 -20 40 40" className="drop-shadow-lg">
-        <rect x="-18" y="-18" width="36" height="36" rx="3" fill="#E8E4DA" stroke="#1E293B" strokeWidth="2" />
-        <rect x="-12" y="-12" width="24" height="24" rx="2" fill="#D4D0C6" stroke="#64748B" strokeWidth="1.5" />
+      <svg width="36" height="36" viewBox="-18 -18 36 36" className="drop-shadow-lg">
+        <rect x="-16" y="-16" width="32" height="32" rx="3" fill="#E8E4DA" stroke="#1E293B" strokeWidth="2" />
+        <rect x="-10" y="-10" width="20" height="20" rx="2" fill="#D4D0C6" stroke="#64748B" strokeWidth="1.5" />
         <text x="0" y="4" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#334155">IN</text>
         {/* Terminal - top only */}
-        <circle cx="0" cy="-18" r="3" fill="#22C55E" stroke="#15803D" strokeWidth="1.5" />
+        <circle cx="0" cy="-16" r="3" fill="#22C55E" stroke="#15803D" strokeWidth="1.5" />
       </svg>
     );
   }
@@ -150,12 +150,12 @@ function DeviceDragPreview({ deviceTypeId }: { deviceTypeId: string | null }) {
   if (deviceTypeId === 'output-unit') {
     // Output Unit preview - square with "OUT" label and top loop connector
     return (
-      <svg width="40" height="40" viewBox="-20 -20 40 40" className="drop-shadow-lg">
-        <rect x="-18" y="-18" width="36" height="36" rx="3" fill="#E8E4DA" stroke="#1E293B" strokeWidth="2" />
-        <rect x="-12" y="-12" width="24" height="24" rx="2" fill="#D4D0C6" stroke="#64748B" strokeWidth="1.5" />
+      <svg width="36" height="36" viewBox="-18 -18 36 36" className="drop-shadow-lg">
+        <rect x="-16" y="-16" width="32" height="32" rx="3" fill="#E8E4DA" stroke="#1E293B" strokeWidth="2" />
+        <rect x="-10" y="-10" width="20" height="20" rx="2" fill="#D4D0C6" stroke="#64748B" strokeWidth="1.5" />
         <text x="0" y="4" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#334155">OUT</text>
         {/* Terminal - top only */}
-        <circle cx="0" cy="-18" r="3" fill="#22C55E" stroke="#15803D" strokeWidth="1.5" />
+        <circle cx="0" cy="-16" r="3" fill="#22C55E" stroke="#15803D" strokeWidth="1.5" />
       </svg>
     );
   }

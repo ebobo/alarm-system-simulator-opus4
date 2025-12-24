@@ -544,8 +544,8 @@ function ProjectionGuide({
     const isInputUnit = deviceTypeId === 'input-unit';
     const isOutputUnit = deviceTypeId === 'output-unit';
     const isIOUnit = isInputUnit || isOutputUnit;
-    const sizeX = isLoopDriver ? 50 * scale : isPanel ? 35 * scale : isMcp ? 35 * scale : isSounder ? 38 * scale : isAGHead ? 30 * scale : isIOUnit ? 40 * scale : 48 * scale;
-    const sizeY = isLoopDriver ? 30 * scale : isPanel ? 25 * scale : isMcp ? 35 * scale : isSounder ? 38 * scale : isAGHead ? 30 * scale : isIOUnit ? 40 * scale : 48 * scale;
+    const sizeX = isLoopDriver ? 50 * scale : isPanel ? 35 * scale : isMcp ? 35 * scale : isSounder ? 38 * scale : isAGHead ? 30 * scale : isIOUnit ? 36 * scale : 48 * scale;
+    const sizeY = isLoopDriver ? 30 * scale : isPanel ? 25 * scale : isMcp ? 35 * scale : isSounder ? 38 * scale : isAGHead ? 30 * scale : isIOUnit ? 36 * scale : 48 * scale;
 
     return (
         <div
@@ -636,12 +636,12 @@ function ProjectionGuide({
                 </svg>
             ) : isIOUnit ? (
                 // Square projection for IO Units (green)
-                <svg width={sizeX} height={sizeY} viewBox="-20 -20 40 40">
+                <svg width={sizeX} height={sizeY} viewBox="-18 -18 36 36">
                     <rect
-                        x="-18"
-                        y="-18"
-                        width="36"
-                        height="36"
+                        x="-16"
+                        y="-16"
+                        width="32"
+                        height="32"
                         rx="4"
                         fill="none"
                         stroke="#22C55E"
@@ -649,9 +649,9 @@ function ProjectionGuide({
                         strokeDasharray="6 3"
                         opacity="0.7"
                     />
-                    <rect x="-16" y="-16" width="32" height="32" rx="3" fill="#22C55E" opacity="0.15" />
-                    <line x1="-12" y1="0" x2="12" y2="0" stroke="#22C55E" strokeWidth="1" opacity="0.5" />
-                    <line x1="0" y1="-12" x2="0" y2="12" stroke="#22C55E" strokeWidth="1" opacity="0.5" />
+                    <rect x="-14" y="-14" width="28" height="28" rx="3" fill="#22C55E" opacity="0.15" />
+                    <line x1="-10" y1="0" x2="10" y2="0" stroke="#22C55E" strokeWidth="1" opacity="0.5" />
+                    <line x1="0" y1="-10" x2="0" y2="10" stroke="#22C55E" strokeWidth="1" opacity="0.5" />
                     <circle r="2" fill="#22C55E" opacity="0.8" />
                 </svg>
             ) : isAGHead ? (
