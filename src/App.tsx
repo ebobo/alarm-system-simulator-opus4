@@ -135,27 +135,33 @@ function DeviceDragPreview({ deviceTypeId }: { deviceTypeId: string | null }) {
   }
 
   if (deviceTypeId === 'input-unit') {
-    // Input Unit preview - square with "IN" label and top loop connector
+    // Input Unit preview - square with "IN" label and 4 connectors
     return (
       <svg width="36" height="36" viewBox="-18 -18 36 36" className="drop-shadow-lg">
         <rect x="-16" y="-16" width="32" height="32" rx="3" fill="#E8E4DA" stroke="#1E293B" strokeWidth="2" />
         <rect x="-10" y="-10" width="20" height="20" rx="2" fill="#D4D0C6" stroke="#64748B" strokeWidth="1.5" />
         <text x="0" y="4" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#334155">IN</text>
-        {/* Terminal - top only */}
+        {/* Terminals - 4 sides */}
         <circle cx="0" cy="-16" r="3" fill="#22C55E" stroke="#15803D" strokeWidth="1.5" />
+        <circle cx="16" cy="0" r="3" fill="#22C55E" stroke="#15803D" strokeWidth="1.5" />
+        <circle cx="0" cy="16" r="3" fill="#22C55E" stroke="#15803D" strokeWidth="1.5" />
+        <circle cx="-16" cy="0" r="3" fill="#22C55E" stroke="#15803D" strokeWidth="1.5" />
       </svg>
     );
   }
 
   if (deviceTypeId === 'output-unit') {
-    // Output Unit preview - square with "OUT" label and top loop connector
+    // Output Unit preview - square with "OUT" label and 4 connectors
     return (
       <svg width="36" height="36" viewBox="-18 -18 36 36" className="drop-shadow-lg">
         <rect x="-16" y="-16" width="32" height="32" rx="3" fill="#E8E4DA" stroke="#1E293B" strokeWidth="2" />
         <rect x="-10" y="-10" width="20" height="20" rx="2" fill="#D4D0C6" stroke="#64748B" strokeWidth="1.5" />
         <text x="0" y="4" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#334155">OUT</text>
-        {/* Terminal - top only */}
+        {/* Terminals - 4 sides */}
         <circle cx="0" cy="-16" r="3" fill="#22C55E" stroke="#15803D" strokeWidth="1.5" />
+        <circle cx="16" cy="0" r="3" fill="#22C55E" stroke="#15803D" strokeWidth="1.5" />
+        <circle cx="0" cy="16" r="3" fill="#22C55E" stroke="#15803D" strokeWidth="1.5" />
+        <circle cx="-16" cy="0" r="3" fill="#22C55E" stroke="#15803D" strokeWidth="1.5" />
       </svg>
     );
   }

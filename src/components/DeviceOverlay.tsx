@@ -338,6 +338,12 @@ function DraggableDevice({
                         >
                             IN
                         </text>
+
+                        {/* Terminals - 4 sides */}
+                        <circle cx="0" cy={-deviceType.height / 2 + 2} r="3" fill="#22C55E" stroke="#15803D" strokeWidth="1.5" />
+                        <circle cx={deviceType.width / 2 - 2} cy="0" r="3" fill="#22C55E" stroke="#15803D" strokeWidth="1.5" />
+                        <circle cx="0" cy={deviceType.height / 2 - 2} r="3" fill="#22C55E" stroke="#15803D" strokeWidth="1.5" />
+                        <circle cx={-deviceType.width / 2 + 2} cy="0" r="3" fill="#22C55E" stroke="#15803D" strokeWidth="1.5" />
                     </>
                 ) : device.typeId === 'output-unit' ? (
                     <>
@@ -392,6 +398,12 @@ function DraggableDevice({
                         >
                             OUT
                         </text>
+
+                        {/* Terminals - 4 sides */}
+                        <circle cx="0" cy={-deviceType.height / 2 + 2} r="3" fill="#22C55E" stroke="#15803D" strokeWidth="1.5" />
+                        <circle cx={deviceType.width / 2 - 2} cy="0" r="3" fill="#22C55E" stroke="#15803D" strokeWidth="1.5" />
+                        <circle cx="0" cy={deviceType.height / 2 - 2} r="3" fill="#22C55E" stroke="#15803D" strokeWidth="1.5" />
+                        <circle cx={-deviceType.width / 2 + 2} cy="0" r="3" fill="#22C55E" stroke="#15803D" strokeWidth="1.5" />
                     </>
                 ) : device.typeId === 'AG-head' ? (
                     <>
@@ -652,7 +664,10 @@ function ProjectionGuide({
                     <rect x="-14" y="-14" width="28" height="28" rx="3" fill="#22C55E" opacity="0.15" />
                     <line x1="-10" y1="0" x2="10" y2="0" stroke="#22C55E" strokeWidth="1" opacity="0.5" />
                     <line x1="0" y1="-10" x2="0" y2="10" stroke="#22C55E" strokeWidth="1" opacity="0.5" />
-                    <circle r="2" fill="#22C55E" opacity="0.8" />
+                    <circle cx="0" cy="-16" r="2" fill="#22C55E" opacity="0.8" />
+                    <circle cx="16" cy="0" r="2" fill="#22C55E" opacity="0.8" />
+                    <circle cx="0" cy="16" r="2" fill="#22C55E" opacity="0.8" />
+                    <circle cx="-16" cy="0" r="2" fill="#22C55E" opacity="0.8" />
                 </svg>
             ) : isAGHead ? (
                 // Circular projection for AG Detector (white/gray)
