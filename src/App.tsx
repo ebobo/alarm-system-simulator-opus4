@@ -941,6 +941,7 @@ function App() {
               label: finalLabel,
               sn: generateSerialNumber(),
               mountedOnSocketId: targetSocket.instanceId,
+              features: [],  // AG Head features (Sounder, BeaconR/W, CO, Voice)
             };
 
             setPlacedDevices(prev => [
@@ -977,6 +978,7 @@ function App() {
         label: '',
         sn: generateSerialNumber(),
         ipAddress: deviceTypeId === 'loop-driver' ? '' : undefined,
+        features: deviceTypeId === 'AG-head' ? [] : undefined,  // AG Head features
       };
 
       setPlacedDevices(prev => [...prev, newDevice]);

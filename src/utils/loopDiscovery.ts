@@ -5,7 +5,7 @@
  * then from LOOP-IN for break detection.
  */
 
-import type { PlacedDevice, Connection } from '../types/devices';
+import type { PlacedDevice, Connection, AGHeadFeature } from '../types/devices';
 
 /**
  * Discovered device with assigned communication address
@@ -17,6 +17,7 @@ export interface DiscoveredDevice {
     label: string;
     typeId: string;
     sn: number;
+    features?: AGHeadFeature[];   // Features from AG Head (when mounted)
 }
 
 /**
@@ -168,7 +169,8 @@ export function discoverLoopDevices(
             discoveredFrom: 'out',
             label: reportDevice.label || device.label || reportDevice.deviceType,
             typeId: device.typeId === 'AG-socket' && device.mountedDetectorId ? 'AG-detector' : device.typeId,
-            sn: reportDevice.sn
+            sn: reportDevice.sn,
+            features: device.typeId === 'AG-socket' && device.mountedDetectorId ? reportDevice.features : undefined
         });
         discoveredIds.add(device.instanceId); // Track original socket ID to avoid re-discovery
         if (reportDevice.instanceId !== device.instanceId) {
@@ -200,7 +202,8 @@ export function discoverLoopDevices(
                 discoveredFrom: 'in',
                 label: reportDevice.label || device.label || reportDevice.deviceType,
                 typeId: device.typeId === 'AG-socket' && device.mountedDetectorId ? 'AG-detector' : device.typeId,
-                sn: reportDevice.sn
+                sn: reportDevice.sn,
+                features: device.typeId === 'AG-socket' && device.mountedDetectorId ? reportDevice.features : undefined
             });
             discoveredIds.add(device.instanceId);
             if (reportDevice.instanceId !== device.instanceId) {

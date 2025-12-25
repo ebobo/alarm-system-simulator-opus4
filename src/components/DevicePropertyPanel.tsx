@@ -1,4 +1,4 @@
-import type { PlacedDevice, Connection, RoomInfo } from '../types/devices';
+import type { PlacedDevice, Connection, RoomInfo, AGHeadFeature } from '../types/devices';
 import { PIXELS_PER_METER } from '../utils/floorPlanGenerator';
 
 interface FloorPlanInfo {
@@ -213,6 +213,39 @@ export default function DevicePropertyPanel({
         return sn.toString(16).toUpperCase().padStart(12, '0');
     };
 
+    // Feature toggle handlers for AG Head
+    const handleFeatureToggle = (feature: AGHeadFeature) => {
+        const currentFeatures = selectedDevice.features || [];
+        const hasFeature = currentFeatures.includes(feature);
+
+        let newFeatures: AGHeadFeature[];
+        if (hasFeature) {
+            // Remove feature
+            newFeatures = currentFeatures.filter(f => f !== feature);
+        } else {
+            // Add feature
+            newFeatures = [...currentFeatures, feature];
+        }
+        onUpdateDevice({ ...selectedDevice, features: newFeatures });
+    };
+
+    // Beacon is mutually exclusive (R or W, not both)
+    const handleBeaconChange = (beacon: 'BeaconR' | 'BeaconW' | 'none') => {
+        const currentFeatures = selectedDevice.features || [];
+        // Remove any existing beacon selection
+        let newFeatures: AGHeadFeature[] = currentFeatures.filter(f => f !== 'BeaconR' && f !== 'BeaconW');
+        // Add new beacon if not 'none'
+        if (beacon !== 'none') {
+            newFeatures = [...newFeatures, beacon];
+        }
+        onUpdateDevice({ ...selectedDevice, features: newFeatures });
+    };
+
+    const currentFeatures = selectedDevice.features || [];
+    const hasBeaconR = currentFeatures.includes('BeaconR');
+    const hasBeaconW = currentFeatures.includes('BeaconW');
+    const beaconValue: 'BeaconR' | 'BeaconW' | 'none' = hasBeaconR ? 'BeaconR' : hasBeaconW ? 'BeaconW' : 'none';
+
     return (
         <div className="border-t border-slate-700 bg-slate-800/50">
             {/* Header */}
@@ -370,6 +403,23 @@ export default function DevicePropertyPanel({
                                 className="w-32 text-xs text-slate-200 bg-slate-700 border border-slate-600 rounded px-2 py-1"
                             />
                         </div>
+
+                        {/* Features (from mounted head) */}
+                        {mountedHead && mountedHead.features && mountedHead.features.length > 0 && (
+                            <div className="border-t border-slate-700 pt-2 mt-2">
+                                <div className="text-xs text-slate-400 mb-1.5">Features</div>
+                                <div className="flex flex-wrap gap-1">
+                                    {mountedHead.features.map(feature => (
+                                        <span
+                                            key={feature}
+                                            className="text-[10px] px-1.5 py-0.5 bg-blue-600/30 text-blue-300 rounded border border-blue-500/30"
+                                        >
+                                            {feature === 'BeaconR' ? 'Beacon R' : feature === 'BeaconW' ? 'Beacon W' : feature}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </>
                 ) : isAGHead ? (
                     /* AG Head (Standalone) Properties */
@@ -400,6 +450,82 @@ export default function DevicePropertyPanel({
                                 className="w-32 text-xs text-slate-200 bg-slate-700 border border-slate-600 rounded px-2 py-1"
                             />
                         </div>
+
+                        {/* Features Section */}
+                        <div className="border-t border-slate-700 pt-3 mt-3">
+                            <div className="text-xs text-slate-400 mb-2">Features</div>
+
+                            {/* Checkboxes for Sounder, CO, Voice */}
+                            <div className="space-y-1.5">
+                                <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-700/30 rounded px-1 py-0.5">
+                                    <input
+                                        type="checkbox"
+                                        checked={currentFeatures.includes('Sounder')}
+                                        onChange={() => handleFeatureToggle('Sounder')}
+                                        className="w-3.5 h-3.5 rounded border-slate-500 bg-slate-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
+                                    />
+                                    <span className="text-xs text-slate-200">Sounder</span>
+                                </label>
+
+                                <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-700/30 rounded px-1 py-0.5">
+                                    <input
+                                        type="checkbox"
+                                        checked={currentFeatures.includes('CO')}
+                                        onChange={() => handleFeatureToggle('CO')}
+                                        className="w-3.5 h-3.5 rounded border-slate-500 bg-slate-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
+                                    />
+                                    <span className="text-xs text-slate-200">CO</span>
+                                </label>
+
+                                <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-700/30 rounded px-1 py-0.5">
+                                    <input
+                                        type="checkbox"
+                                        checked={currentFeatures.includes('Voice')}
+                                        onChange={() => handleFeatureToggle('Voice')}
+                                        className="w-3.5 h-3.5 rounded border-slate-500 bg-slate-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
+                                    />
+                                    <span className="text-xs text-slate-200">Voice</span>
+                                </label>
+                            </div>
+
+                            {/* Beacon Radio Buttons (mutually exclusive) */}
+                            <div className="mt-3 pt-2 border-t border-slate-700/50">
+                                <div className="text-xs text-slate-400 mb-1.5">Beacon</div>
+                                <div className="flex gap-3">
+                                    <label className="flex items-center gap-1.5 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="beacon"
+                                            checked={beaconValue === 'none'}
+                                            onChange={() => handleBeaconChange('none')}
+                                            className="w-3 h-3 border-slate-500 bg-slate-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
+                                        />
+                                        <span className="text-xs text-slate-300">None</span>
+                                    </label>
+                                    <label className="flex items-center gap-1.5 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="beacon"
+                                            checked={beaconValue === 'BeaconR'}
+                                            onChange={() => handleBeaconChange('BeaconR')}
+                                            className="w-3 h-3 border-slate-500 bg-slate-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
+                                        />
+                                        <span className="text-xs text-slate-300">R</span>
+                                    </label>
+                                    <label className="flex items-center gap-1.5 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="beacon"
+                                            checked={beaconValue === 'BeaconW'}
+                                            onChange={() => handleBeaconChange('BeaconW')}
+                                            className="w-3 h-3 border-slate-500 bg-slate-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
+                                        />
+                                        <span className="text-xs text-slate-300">W</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="text-[10px] text-slate-500 italic text-center mt-2">
                             Place on AG Socket to mount
                         </div>

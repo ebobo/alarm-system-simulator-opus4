@@ -1,6 +1,13 @@
 // Device and terminal type definitions for fire alarm loop simulator
 
 /**
+ * AG Head feature types
+ * - Sounder, CO, Voice: can be selected independently
+ * - BeaconR, BeaconW: mutually exclusive (Red vs White beacon)
+ */
+export type AGHeadFeature = 'Sounder' | 'BeaconR' | 'BeaconW' | 'CO' | 'Voice';
+
+/**
  * Terminal definition relative to device center
  * Positions are in range [-0.5, 0.5] relative to device size
  */
@@ -48,6 +55,8 @@ export interface PlacedDevice {
     mountedDetectorId?: string;
     // AG Detector specific - ID of socket it's mounted on (null if freely placed)
     mountedOnSocketId?: string;
+    // AG Head specific - selected features (Sounder, BeaconR/W, CO, Voice)
+    features?: AGHeadFeature[];
 }
 
 export interface ViewportTransform {
