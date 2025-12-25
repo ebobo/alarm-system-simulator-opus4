@@ -12,8 +12,8 @@ interface PanelModuleProps {
 }
 
 // Module dimensions - scaled larger for better visibility
-const MODULE_WIDTH = 56;   // Wider for better visibility
-const MODULE_HEIGHT = 180; // Taller, keeping proportions
+const MODULE_WIDTH = 60;   // ~37.5mm scale
+const MODULE_HEIGHT = 200; // ~125mm scale
 
 // LED colors based on status
 const STATUS_COLORS = {
