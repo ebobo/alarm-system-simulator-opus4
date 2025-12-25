@@ -14,12 +14,13 @@ export type UnifiedSidebarTab = 'devices' | 'panel-status' | 'configuration';
 
 interface DraggableDeviceItemProps {
     deviceType: DeviceType;
+    onQuickSetup?: () => void;
 }
 
 /**
  * Individual draggable device item (extracted from DevicePalette)
  */
-function DraggableDeviceItem({ deviceType }: DraggableDeviceItemProps) {
+function DraggableDeviceItem({ deviceType, onQuickSetup }: DraggableDeviceItemProps) {
     const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
         id: `palette-${deviceType.id}`,
         data: {
@@ -79,6 +80,23 @@ function DraggableDeviceItem({ deviceType }: DraggableDeviceItemProps) {
             className="bg-slate-700/50 hover:bg-slate-700 rounded-lg p-2 cursor-grab active:cursor-grabbing
                        transition-all duration-200 border border-slate-600/50 relative overflow-hidden group"
         >
+            {/* Quick Setup Button - Only for AG-socket */}
+            {deviceType.id === 'AG-socket' && onQuickSetup && (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation(); // Prevent drag start
+                        onQuickSetup();
+                    }}
+                    onPointerDown={(e) => e.stopPropagation()} // Prevent drag start on pointer down
+                    className="absolute top-1 right-1 w-5 h-5 bg-blue-500 hover:bg-blue-400 text-white rounded-full 
+                               flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-lg"
+                    title="Quick Setup: Auto-place sockets in empty rooms"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                </button>
+            )}
             <div className="flex items-center gap-3">
                 {/* Device icon - different shape based on category */}
                 <div className={`w-10 h-10 shrink-0 ${styles.bg} rounded-lg flex items-center justify-center ${styles.border} border`}>
@@ -199,7 +217,7 @@ function DraggableDeviceItem({ deviceType }: DraggableDeviceItemProps) {
 /**
  * Devices tab content - draggable device list
  */
-function DevicesTabContent() {
+function DevicesTabContent({ onQuickSetup }: { onQuickSetup?: () => void }) {
     const deviceTypes = Object.values(DEVICE_TYPES);
 
     return (
@@ -211,7 +229,7 @@ function DevicesTabContent() {
             {/* 2-column grid layout */}
             <div className="grid grid-cols-2 gap-2">
                 {/* Row 1: AG Socket, AG Head */}
-                <DraggableDeviceItem deviceType={deviceTypes.find(d => d.id === 'AG-socket')!} />
+                <DraggableDeviceItem deviceType={deviceTypes.find(d => d.id === 'AG-socket')!} onQuickSetup={onQuickSetup} />
                 <DraggableDeviceItem deviceType={deviceTypes.find(d => d.id === 'AG-head')!} />
 
                 {/* Row 2: MCP, Sounder */}
@@ -264,6 +282,9 @@ interface UnifiedSidebarProps {
     isConfigZonesCollapsed: boolean;
     onToggleConfigZonesCollapsed: () => void;
     floorPlanProjectName?: string;
+
+    // Quick Setup
+    onQuickSetup?: () => void;
 }
 
 export default function UnifiedSidebar({
@@ -281,7 +302,8 @@ export default function UnifiedSidebar({
     onToggleConfigDevicesCollapsed,
     isConfigZonesCollapsed,
     onToggleConfigZonesCollapsed,
-    floorPlanProjectName
+    floorPlanProjectName,
+    onQuickSetup
 }: UnifiedSidebarProps) {
 
     // Devices tab is disabled in panel and simulation views
@@ -444,7 +466,7 @@ export default function UnifiedSidebar({
 
             {/* Tab Content */}
             {activeTab === 'devices' ? (
-                <DevicesTabContent />
+                <DevicesTabContent onQuickSetup={onQuickSetup} />
             ) : activeTab === 'panel-status' ? (
                 <ModulesTab modules={modules} />
             ) : (

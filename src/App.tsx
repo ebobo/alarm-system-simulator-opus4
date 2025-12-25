@@ -546,6 +546,74 @@ function App() {
     setShowSaveNameDialog(false);
   };
 
+  // Quick Setup: Auto-place AG Sockets in empty rooms
+  const handleQuickSetup = useCallback(() => {
+    if (!svgContent) return;
+
+    // Parse SVG to extract room rectangles
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgContent, 'image/svg+xml');
+    const roomElements = doc.querySelectorAll('rect[data-room-id]');
+
+    // Collect rooms with their coordinates
+    const rooms: { id: string; x: number; y: number; width: number; height: number }[] = [];
+    roomElements.forEach((el) => {
+      const roomId = el.getAttribute('data-room-id');
+      const x = parseFloat(el.getAttribute('x') || '0');
+      const y = parseFloat(el.getAttribute('y') || '0');
+      const width = parseFloat(el.getAttribute('width') || '0');
+      const height = parseFloat(el.getAttribute('height') || '0');
+
+      if (roomId && width > 0 && height > 0) {
+        rooms.push({ id: roomId, x, y, width, height });
+      }
+    });
+
+    // Find rooms without an AG Socket or AG Head
+    const emptyRooms = rooms.filter((room) => {
+      // Check if any existing socket/head is in this room
+      const hasDevice = placedDevices.some((device) => {
+        if (device.typeId !== 'AG-socket' && device.typeId !== 'AG-head') return false;
+        // Check if device is within room bounds
+        return (
+          device.x >= room.x &&
+          device.x <= room.x + room.width &&
+          device.y >= room.y &&
+          device.y <= room.y + room.height
+        );
+      });
+
+      return !hasDevice;
+    });
+
+    if (emptyRooms.length === 0) {
+      setSaveNotification('All rooms already have sockets!');
+      setTimeout(() => setSaveNotification(null), 2000);
+      return;
+    }
+
+    // Create new AG Sockets for empty rooms
+    const newDevices: PlacedDevice[] = emptyRooms.map((room) => ({
+      instanceId: generateInstanceId(),
+      typeId: 'AG-socket',
+      x: room.x + room.width * 0.7, // Place at 70% width to correct for visual offset (requested +20%)
+      y: room.y + room.height * 0.8, // Place at 80% height (close to bottom) as requested
+      rotation: 0,
+      deviceType: 'AG Socket',
+      deviceId: null,
+      cAddress: null,
+      label: '',
+      sn: generateSerialNumber(),
+    }));
+
+    // Add new devices
+    setPlacedDevices((prev) => [...prev, ...newDevices]);
+
+    // Show notification
+    setSaveNotification(`Auto-placed ${newDevices.length} socket${newDevices.length > 1 ? 's' : ''}!`);
+    setTimeout(() => setSaveNotification(null), 2500);
+  }, [svgContent, placedDevices]);
+
   // Start new project (with confirmation)
   const handleNewProject = () => {
     if (placedDevices.length > 0 || connections.length > 0) {
@@ -1470,6 +1538,7 @@ function App() {
               isConfigZonesCollapsed={isConfigZonesCollapsed}
               onToggleConfigZonesCollapsed={() => setIsConfigZonesCollapsed(prev => !prev)}
               floorPlanProjectName={currentProjectName}
+              onQuickSetup={handleQuickSetup}
             />
           </div>
           {/* Docked Property Panel - only when not floating and has floor plan */}
