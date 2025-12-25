@@ -111,12 +111,7 @@ export default function PanelInsideView({
 
     return (
         // Match PanelFrame styling but wider (max-w-4xl) to match front panel visuals
-        <div className="w-full max-w-4xl bg-gradient-to-b from-slate-700 to-slate-800 rounded-2xl border-4 border-slate-600 shadow-2xl p-8">
-            {/* Header - match front panel */}
-            <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold text-white tracking-wider">AutroSafe V</h2>
-                <p className="text-slate-400 text-sm">Panel Enclosure (Inside View)</p>
-            </div>
+        <div className="w-full max-w-4xl bg-gradient-to-b from-slate-700 to-slate-800 rounded-2xl border-4 border-slate-600 shadow-2xl p-[22px]">
 
             {/* Enclosure interior */}
             <div className="bg-slate-950/90 rounded-xl p-8 shadow-inner border border-slate-800 min-h-[520px] flex flex-col items-center">
