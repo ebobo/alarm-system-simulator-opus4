@@ -12,8 +12,8 @@ interface PanelInsideViewProps {
 }
 
 // Enclosure dimensions - Wider to match front panel proportions
-const DIN_RAIL_HEIGHT = 20;    // Wide DIN rail
-const MODULE_SPACING = 24;     // Increased spacing
+const DIN_RAIL_HEIGHT = 80;    // Wide DIN rail (approx half module height 200px)
+const MODULE_SPACING = 10;     // Reduced spacing to 10px
 
 export default function PanelInsideView({
     placedDevices,
@@ -134,7 +134,7 @@ export default function PanelInsideView({
                         {/* Rail profile details */}
                         <div className="absolute top-0 left-0 right-0 h-[3px] bg-slate-300 shadow-sm" />
                         <div className="absolute top-[3px] left-0 right-0 h-[1px] bg-slate-600/30" />
-                        <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-[6px] bg-slate-700/40 border-y border-slate-600/50" />
+                        {/* Middle groove removed per user request */}
                         <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-slate-600 shadow-sm" />
                     </div>
 
@@ -160,7 +160,7 @@ export default function PanelInsideView({
                         {/* Rail profile details */}
                         <div className="absolute top-0 left-0 right-0 h-[3px] bg-slate-300 shadow-sm" />
                         <div className="absolute top-[3px] left-0 right-0 h-[1px] bg-slate-600/30" />
-                        <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-[6px] bg-slate-700/40 border-y border-slate-600/50" />
+                        {/* Middle groove removed per user request */}
                         <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-slate-600 shadow-sm" />
                     </div>
 

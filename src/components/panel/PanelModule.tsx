@@ -142,11 +142,6 @@ export default function PanelModule({
                     ))}
                 </div>
 
-                {/* DIN rail mounting slot in the MIDDLE of module */}
-                <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-6 flex items-center justify-center">
-                    <div className="w-full h-1 bg-slate-400/30" />
-                </div>
-
                 {/* Front panel content area */}
                 <div className="absolute top-8 left-1 right-1 bottom-3">
                     {renderFrontPanel()}
