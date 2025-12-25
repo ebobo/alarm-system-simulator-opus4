@@ -110,8 +110,8 @@ export default function PanelInsideView({
     }
 
     return (
-        // Match PanelFrame styling but wider (max-w-3xl) to match front panel visuals
-        <div className="w-full max-w-3xl bg-gradient-to-b from-slate-700 to-slate-800 rounded-2xl border-4 border-slate-600 shadow-2xl p-[20px]">
+        // Match PanelFrame styling but wider (max-w-[700px]) to match front panel visuals
+        <div className="w-full max-w-[700px] bg-gradient-to-b from-slate-700 to-slate-800 rounded-2xl border-4 border-slate-600 shadow-2xl p-[20px]">
 
             {/* Enclosure interior */}
             <div className="bg-slate-950/90 rounded-xl p-8 shadow-inner border border-slate-800 min-h-[470px] flex flex-col items-center">
