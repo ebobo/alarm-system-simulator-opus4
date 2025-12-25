@@ -1,5 +1,5 @@
 // Panel Inside View - Shows the internal enclosure with DIN rail mounted modules
-import PanelModule, { EmptyModuleSlot, MODULE_WIDTH, MODULE_HEIGHT } from './PanelModule';
+import PanelModule, { EmptyModuleSlot, MODULE_HEIGHT } from './PanelModule';
 import type { PlacedDevice, Connection } from '../../types/devices';
 
 interface PanelInsideViewProps {
@@ -10,11 +10,9 @@ interface PanelInsideViewProps {
     onSelectDevice?: (deviceId: string) => void;
 }
 
-// Enclosure dimensions - match front panel size (max-w-3xl ≈ 600px usable)
-const ENCLOSURE_WIDTH = 600;
-const ENCLOSURE_HEIGHT = 580;
-const DIN_RAIL_HEIGHT = 10;
-const MODULE_SPACING = 16;
+// Enclosure dimensions - match front panel size
+const DIN_RAIL_HEIGHT = 20;    // Wide DIN rail
+const MODULE_SPACING = 20;
 
 export default function PanelInsideView({
     placedDevices,
@@ -46,11 +44,8 @@ export default function PanelInsideView({
         return 'warning';
     };
 
-    // Calculate modules per rail based on width
-    const usableWidth = ENCLOSURE_WIDTH - 48; // padding
-    const modulesPerRail = Math.floor(usableWidth / (MODULE_WIDTH + MODULE_SPACING));
-    const RAIL_1_MAX_SLOTS = Math.min(modulesPerRail, 6);
-    const RAIL_2_MAX_SLOTS = Math.min(modulesPerRail, 6);
+    // Max slots per rail
+    const RAIL_MAX_SLOTS = 6;
 
     // Build Rail 1 modules (Controller + Loop Drivers)
     const rail1Modules: React.ReactNode[] = [];
@@ -71,12 +66,12 @@ export default function PanelInsideView({
 
     // Loop drivers on rail 1
     loopDrivers.forEach((ld, index) => {
-        if (rail1Modules.length < RAIL_1_MAX_SLOTS) {
+        if (rail1Modules.length < RAIL_MAX_SLOTS) {
             rail1Modules.push(
                 <PanelModule
                     key={ld.instanceId}
                     type="loop-driver"
-                    label={ld.label || `Loop Driver ${index + 1}`}
+                    label={ld.label || `Loop ${index + 1}`}
                     loopNumber={index + 1}
                     status={getModuleStatus(ld.instanceId)}
                     isSelected={selectedDeviceId === ld.instanceId}
@@ -87,7 +82,7 @@ export default function PanelInsideView({
     });
 
     // Fill remaining slots on rail 1 with empty slots (max 2 empty slots shown)
-    const rail1EmptySlots = Math.min(2, RAIL_1_MAX_SLOTS - rail1Modules.length);
+    const rail1EmptySlots = Math.min(2, RAIL_MAX_SLOTS - rail1Modules.length);
     for (let i = 0; i < rail1EmptySlots; i++) {
         rail1Modules.push(<EmptyModuleSlot key={`empty-rail1-${i}`} />);
     }
@@ -108,88 +103,95 @@ export default function PanelInsideView({
     }
 
     // Fill remaining slots on rail 2 with empty slots (max 2 empty slots shown)
-    const rail2EmptySlots = Math.min(2, RAIL_2_MAX_SLOTS - rail2Modules.length);
+    const rail2EmptySlots = Math.min(2, RAIL_MAX_SLOTS - rail2Modules.length);
     for (let i = 0; i < rail2EmptySlots; i++) {
         rail2Modules.push(<EmptyModuleSlot key={`empty-rail2-${i}`} />);
     }
 
-    // Calculate vertical positions for rails
-    const rail1Y = 50;
-    const rail2Y = rail1Y + MODULE_HEIGHT + 40;
-
     return (
-        <div
-            className="relative bg-gradient-to-br from-slate-800 via-slate-850 to-slate-900 rounded-xl border-4 border-slate-600 shadow-2xl overflow-hidden"
-            style={{ width: ENCLOSURE_WIDTH, height: ENCLOSURE_HEIGHT }}
-        >
-            {/* Inner enclosure shadow effect */}
-            <div className="absolute inset-3 bg-slate-950/80 rounded-lg shadow-inner border border-slate-800" />
-
-            {/* Title */}
-            <div className="absolute top-4 left-0 right-0 text-center z-10">
-                <span className="text-sm text-slate-400 font-medium tracking-wide">PANEL ENCLOSURE</span>
+        // Match PanelFrame styling: bg-gradient-to-b from-slate-700 to-slate-800 rounded-2xl border-4 border-slate-600 shadow-2xl p-8
+        <div className="bg-gradient-to-b from-slate-700 to-slate-800 rounded-2xl border-4 border-slate-600 shadow-2xl p-8">
+            {/* Header - match front panel */}
+            <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold text-white tracking-wider">AutroSafe V</h2>
+                <p className="text-slate-400 text-sm">Panel Enclosure (Inside View)</p>
             </div>
 
-            {/* DIN Rail 1 with modules */}
-            <div className="absolute left-6 right-6" style={{ top: rail1Y }}>
-                {/* Rail background */}
-                <div
-                    className="absolute left-0 right-0 bg-gradient-to-b from-slate-300 via-slate-400 to-slate-500 rounded shadow-md z-0"
-                    style={{ height: DIN_RAIL_HEIGHT, top: MODULE_HEIGHT - DIN_RAIL_HEIGHT - 4 }}
-                >
-                    {/* Rail profile lines */}
-                    <div className="absolute top-1 left-0 right-0 h-[2px] bg-slate-200/50" />
-                    <div className="absolute bottom-1 left-0 right-0 h-[2px] bg-slate-600/50" />
+            {/* Enclosure interior */}
+            <div className="bg-slate-950/90 rounded-xl p-6 shadow-inner border border-slate-800 min-h-[460px]">
+
+                {/* DIN Rail 1 with modules */}
+                <div className="relative mb-8">
+                    {/* Wide DIN rail running through the CENTER of modules */}
+                    <div
+                        className="absolute left-0 right-0 bg-gradient-to-b from-slate-400 via-slate-500 to-slate-400 rounded shadow-md z-0"
+                        style={{
+                            height: DIN_RAIL_HEIGHT,
+                            top: MODULE_HEIGHT / 2 - DIN_RAIL_HEIGHT / 2
+                        }}
+                    >
+                        {/* Rail profile - top edge */}
+                        <div className="absolute top-0 left-0 right-0 h-[3px] bg-slate-300" />
+                        {/* Rail center groove */}
+                        <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-[4px] bg-slate-600" />
+                        {/* Rail profile - bottom edge */}
+                        <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-slate-600" />
+                    </div>
+
+                    {/* Modules on Rail 1 */}
+                    <div
+                        className="relative flex z-10"
+                        style={{ gap: MODULE_SPACING }}
+                    >
+                        {rail1Modules}
+                    </div>
                 </div>
 
-                {/* Modules on Rail 1 */}
-                <div
-                    className="relative flex z-10"
-                    style={{ gap: MODULE_SPACING }}
-                >
-                    {rail1Modules}
-                </div>
-            </div>
+                {/* Spacer for labels */}
+                <div className="h-4" />
 
-            {/* DIN Rail 2 with modules */}
-            <div className="absolute left-6 right-6" style={{ top: rail2Y }}>
-                {/* Rail background */}
-                <div
-                    className="absolute left-0 right-0 bg-gradient-to-b from-slate-300 via-slate-400 to-slate-500 rounded shadow-md z-0"
-                    style={{ height: DIN_RAIL_HEIGHT, top: MODULE_HEIGHT - DIN_RAIL_HEIGHT - 4 }}
-                >
-                    {/* Rail profile lines */}
-                    <div className="absolute top-1 left-0 right-0 h-[2px] bg-slate-200/50" />
-                    <div className="absolute bottom-1 left-0 right-0 h-[2px] bg-slate-600/50" />
-                </div>
+                {/* DIN Rail 2 with modules */}
+                <div className="relative">
+                    {/* Wide DIN rail running through the CENTER of modules */}
+                    <div
+                        className="absolute left-0 right-0 bg-gradient-to-b from-slate-400 via-slate-500 to-slate-400 rounded shadow-md z-0"
+                        style={{
+                            height: DIN_RAIL_HEIGHT,
+                            top: MODULE_HEIGHT / 2 - DIN_RAIL_HEIGHT / 2
+                        }}
+                    >
+                        {/* Rail profile - top edge */}
+                        <div className="absolute top-0 left-0 right-0 h-[3px] bg-slate-300" />
+                        {/* Rail center groove */}
+                        <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-[4px] bg-slate-600" />
+                        {/* Rail profile - bottom edge */}
+                        <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-slate-600" />
+                    </div>
 
-                {/* Modules on Rail 2 */}
-                <div
-                    className="relative flex z-10"
-                    style={{ gap: MODULE_SPACING }}
-                >
-                    {rail2Modules}
+                    {/* Modules on Rail 2 */}
+                    <div
+                        className="relative flex z-10"
+                        style={{ gap: MODULE_SPACING }}
+                    >
+                        {rail2Modules}
+                    </div>
                 </div>
             </div>
 
             {/* Battery compartment */}
-            <div className="absolute bottom-6 left-6 right-6 flex gap-4 justify-center z-10">
+            <div className="mt-6 flex gap-6 justify-center">
                 {/* Battery 1 */}
-                <div className="flex flex-col items-center gap-1">
-                    <div className="w-28 h-14 bg-slate-950 rounded-lg border border-slate-700 flex items-center justify-center shadow-inner">
-                        <div className="flex flex-col items-center">
-                            <span className="text-[10px] text-slate-500 font-medium">BATTERY</span>
-                            <span className="text-[8px] text-slate-600">12V 7Ah</span>
-                        </div>
+                <div className="w-32 h-16 bg-slate-950 rounded-lg border border-slate-700 flex items-center justify-center shadow-inner">
+                    <div className="flex flex-col items-center">
+                        <span className="text-xs text-slate-500 font-medium">BATTERY</span>
+                        <span className="text-[10px] text-slate-600">12V 7Ah</span>
                     </div>
                 </div>
                 {/* Battery 2 */}
-                <div className="flex flex-col items-center gap-1">
-                    <div className="w-28 h-14 bg-slate-950 rounded-lg border border-slate-700 flex items-center justify-center shadow-inner">
-                        <div className="flex flex-col items-center">
-                            <span className="text-[10px] text-slate-500 font-medium">BATTERY</span>
-                            <span className="text-[8px] text-slate-600">12V 7Ah</span>
-                        </div>
+                <div className="w-32 h-16 bg-slate-950 rounded-lg border border-slate-700 flex items-center justify-center shadow-inner">
+                    <div className="flex flex-col items-center">
+                        <span className="text-xs text-slate-500 font-medium">BATTERY</span>
+                        <span className="text-[10px] text-slate-600">12V 7Ah</span>
                     </div>
                 </div>
             </div>
