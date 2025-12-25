@@ -12,8 +12,8 @@ interface PanelInsideViewProps {
 }
 
 // Enclosure dimensions - Wider to match front panel proportions
-const DIN_RAIL_HEIGHT = 80;    // Wide DIN rail (approx half module height 200px)
-const MODULE_SPACING = 10;     // Reduced spacing to 10px
+const DIN_RAIL_HEIGHT = 72;    // Wide DIN rail (scaled down)
+const MODULE_SPACING = 9;      // Reduced spacing
 
 export default function PanelInsideView({
     placedDevices,
@@ -110,11 +110,11 @@ export default function PanelInsideView({
     }
 
     return (
-        // Match PanelFrame styling but wider (max-w-4xl) to match front panel visuals
-        <div className="w-full max-w-4xl bg-gradient-to-b from-slate-700 to-slate-800 rounded-2xl border-4 border-slate-600 shadow-2xl p-[22px]">
+        // Match PanelFrame styling but wider (max-w-3xl) to match front panel visuals
+        <div className="w-full max-w-3xl bg-gradient-to-b from-slate-700 to-slate-800 rounded-2xl border-4 border-slate-600 shadow-2xl p-[20px]">
 
             {/* Enclosure interior */}
-            <div className="bg-slate-950/90 rounded-xl p-8 shadow-inner border border-slate-800 min-h-[520px] flex flex-col items-center">
+            <div className="bg-slate-950/90 rounded-xl p-8 shadow-inner border border-slate-800 min-h-[470px] flex flex-col items-center">
 
                 {/* DIN Rail 1 Area */}
                 <div className="relative w-full flex justify-center mb-10">

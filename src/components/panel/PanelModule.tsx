@@ -11,9 +11,9 @@ interface PanelModuleProps {
     loopNumber?: number;  // For loop driver modules
 }
 
-// Module dimensions - scaled larger for better visibility
-const MODULE_WIDTH = 60;   // ~37.5mm scale
-const MODULE_HEIGHT = 200; // ~125mm scale
+// Module dimensions - scaled smaller (10% reduction) to match front panel
+const MODULE_WIDTH = 54;   // ~54px
+const MODULE_HEIGHT = 180; // ~180px
 
 // LED colors based on status
 const STATUS_COLORS = {
