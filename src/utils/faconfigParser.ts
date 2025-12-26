@@ -1,5 +1,8 @@
 // .faconfig file parser and validator
-import type { FAConfig, FAConfigDevice } from '../types/faconfig';
+// Supports v1.0 (legacy) and v2.0 (multi-function) formats
+
+import type { FAConfig, FAConfigDevice, DeviceFunction } from '../types/faconfig';
+import { isInputFunctionType, isOutputFunctionType } from '../types/faconfig';
 import type { PlacedDevice } from '../types/devices';
 
 export type ParseResult =
@@ -8,6 +11,7 @@ export type ParseResult =
 
 /**
  * Parse and validate a .faconfig JSON string
+ * Automatically migrates v1.0 format to v2.0
  */
 export function parseFAConfig(jsonString: string): ParseResult {
     try {
@@ -19,7 +23,10 @@ export function parseFAConfig(jsonString: string): ParseResult {
             return { success: false, error: validation.error };
         }
 
-        return { success: true, config: parsed as FAConfig };
+        // Migrate v1.0 format if needed
+        const config = migrateToV2(parsed);
+
+        return { success: true, config };
     } catch (e) {
         return {
             success: false,
@@ -29,7 +36,69 @@ export function parseFAConfig(jsonString: string): ParseResult {
 }
 
 /**
- * Validate that an object matches the FAConfig schema (UUID-based format)
+ * Migrate v1.0 format to v2.0
+ * - Rename 'uuid' to 'primaryUuid' for devices
+ * - Add functions array if missing
+ */
+function migrateToV2(parsed: Record<string, unknown>): FAConfig {
+    const version = parsed.version as string;
+    const devices = parsed.devices as Record<string, unknown>[];
+
+    // Migrate devices
+    const migratedDevices: FAConfigDevice[] = devices.map(d => {
+        // Handle uuid -> primaryUuid migration
+        const primaryUuid = (d.primaryUuid as string) || (d.uuid as string) || '';
+        const deviceType = d.type as string;
+
+        // Create functions array if missing
+        let functions = d.functions as DeviceFunction[] | undefined;
+        if (!functions || functions.length === 0) {
+            // Generate default function based on device type
+            functions = createDefaultFunctions(primaryUuid, deviceType);
+        }
+
+        return {
+            address: d.address as string,
+            primaryUuid,
+            type: deviceType,
+            subType: d.subType as string | undefined,
+            location: d.location as string,
+            label: d.label as string | undefined,
+            functions,
+        };
+    });
+
+    return {
+        version: version === '1.0' ? '2.0' : version, // Upgrade version
+        projectName: parsed.projectName as string,
+        createdAt: parsed.createdAt as string,
+        devices: migratedDevices,
+        zones: parsed.zones as FAConfig['zones'],
+        causeEffect: parsed.causeEffect as FAConfig['causeEffect'],
+    };
+}
+
+/**
+ * Create default functions array based on device type (for v1.0 migration)
+ */
+function createDefaultFunctions(uuid: string, deviceType: string): DeviceFunction[] {
+    const type = deviceType.toLowerCase();
+
+    if (type === 'detector') {
+        return [{ uuid, type: 'detector', role: 'input' }];
+    } else if (type === 'mcp') {
+        return [{ uuid, type: 'mcp', role: 'input' }];
+    } else if (type === 'sounder') {
+        return [{ uuid, type: 'sounder', role: 'output' }];
+    }
+
+    // Unknown type - default to detector
+    return [{ uuid, type: 'detector', role: 'input' }];
+}
+
+/**
+ * Validate that an object matches the FAConfig schema
+ * Supports both v1.0 and v2.0 formats
  */
 export function validateFAConfig(obj: unknown): { valid: true } | { valid: false; error: string } {
     if (!obj || typeof obj !== 'object') {
@@ -119,7 +188,7 @@ export function validateFAConfig(obj: unknown): { valid: true } | { valid: false
 }
 
 /**
- * Validate a single device entry (UUID-based format)
+ * Validate a single device entry (supports both v1.0 and v2.0)
  */
 function validateDevice(device: unknown, index: number): { valid: true } | { valid: false; error: string } {
     if (!device || typeof device !== 'object') {
@@ -128,44 +197,96 @@ function validateDevice(device: unknown, index: number): { valid: true } | { val
 
     const d = device as Record<string, unknown>;
 
-    if (typeof d.uuid !== 'string') {
-        return { valid: false, error: `Device ${index}: missing or invalid "uuid"` };
+    // Accept either 'uuid' (v1.0) or 'primaryUuid' (v2.0)
+    if (typeof d.uuid !== 'string' && typeof d.primaryUuid !== 'string') {
+        return { valid: false, error: `Device ${index}: missing "uuid" or "primaryUuid"` };
     }
 
     if (typeof d.address !== 'string') {
         return { valid: false, error: `Device ${index}: missing or invalid "address"` };
     }
 
-    const validTypes = ['detector', 'mcp', 'sounder'];
-    if (!validTypes.includes(d.type as string)) {
-        return { valid: false, error: `Device ${index}: invalid type "${d.type}". Must be one of: ${validTypes.join(', ')}` };
+    if (typeof d.type !== 'string') {
+        return { valid: false, error: `Device ${index}: missing or invalid "type"` };
     }
 
     if (typeof d.location !== 'string') {
         return { valid: false, error: `Device ${index}: missing or invalid "location"` };
     }
 
+    // Validate functions array if present (v2.0)
+    if (d.functions !== undefined) {
+        if (!Array.isArray(d.functions)) {
+            return { valid: false, error: `Device ${index}: "functions" must be an array` };
+        }
+        for (let i = 0; i < d.functions.length; i++) {
+            const fn = d.functions[i] as Record<string, unknown>;
+            if (typeof fn.uuid !== 'string') {
+                return { valid: false, error: `Device ${index}, function ${i}: missing "uuid"` };
+            }
+            if (typeof fn.type !== 'string') {
+                return { valid: false, error: `Device ${index}, function ${i}: missing "type"` };
+            }
+            if (fn.role !== 'input' && fn.role !== 'output') {
+                return { valid: false, error: `Device ${index}, function ${i}: "role" must be "input" or "output"` };
+            }
+        }
+    }
+
     return { valid: true };
 }
 
 /**
- * Get summary statistics from a config
+ * Get summary statistics from a config (v2.0 aware)
  */
 export function getConfigSummary(config: FAConfig): {
     totalDevices: number;
+    totalFunctions: number;
     detectors: number;
     mcps: number;
     sounders: number;
+    beacons: number;
+    coSensors: number;
+    voice: number;
     detectionZones: number;
     alarmZones: number;
     ceRules: number;
 } {
     const devices = config.devices;
+
+    // Count functions by type
+    let detectors = 0;
+    let mcps = 0;
+    let sounders = 0;
+    let beacons = 0;
+    let coSensors = 0;
+    let voice = 0;
+    let totalFunctions = 0;
+
+    for (const device of devices) {
+        for (const fn of device.functions) {
+            totalFunctions++;
+            switch (fn.type) {
+                case 'detector': detectors++; break;
+                case 'mcp': mcps++; break;
+                case 'sounder': sounders++; break;
+                case 'beacon-red':
+                case 'beacon-white': beacons++; break;
+                case 'co-sensor': coSensors++; break;
+                case 'voice': voice++; break;
+            }
+        }
+    }
+
     return {
         totalDevices: devices.length,
-        detectors: devices.filter(d => d.type === 'detector').length,
-        mcps: devices.filter(d => d.type === 'mcp').length,
-        sounders: devices.filter(d => d.type === 'sounder').length,
+        totalFunctions,
+        detectors,
+        mcps,
+        sounders,
+        beacons,
+        coSensors,
+        voice,
         detectionZones: config.zones.detection.length,
         alarmZones: config.zones.alarm.length,
         ceRules: config.causeEffect.length,
@@ -181,6 +302,60 @@ export function buildDeviceAddressMap(config: FAConfig): Map<string, FAConfigDev
         map.set(device.address, device);
     }
     return map;
+}
+
+/**
+ * Get all input functions from devices in a list of addresses
+ */
+export function getInputFunctionsForAddresses(config: FAConfig, addresses: string[]): DeviceFunction[] {
+    const functions: DeviceFunction[] = [];
+
+    for (const addr of addresses) {
+        const device = config.devices.find(d => d.address === addr);
+        if (device) {
+            for (const fn of device.functions) {
+                if (fn.role === 'input' || isInputFunctionType(fn.type)) {
+                    functions.push(fn);
+                }
+            }
+        }
+    }
+
+    return functions;
+}
+
+/**
+ * Get all output functions from devices in a list of addresses
+ */
+export function getOutputFunctionsForAddresses(config: FAConfig, addresses: string[]): DeviceFunction[] {
+    const functions: DeviceFunction[] = [];
+
+    for (const addr of addresses) {
+        const device = config.devices.find(d => d.address === addr);
+        if (device) {
+            for (const fn of device.functions) {
+                if (fn.role === 'output' || isOutputFunctionType(fn.type)) {
+                    functions.push(fn);
+                }
+            }
+        }
+    }
+
+    return functions;
+}
+
+/**
+ * Check if a device has any input functions
+ */
+export function hasInputFunction(device: FAConfigDevice): boolean {
+    return device.functions.some(fn => fn.role === 'input' || isInputFunctionType(fn.type));
+}
+
+/**
+ * Check if a device has any output functions
+ */
+export function hasOutputFunction(device: FAConfigDevice): boolean {
+    return device.functions.some(fn => fn.role === 'output' || isOutputFunctionType(fn.type));
 }
 
 /**
@@ -201,12 +376,11 @@ export interface DeviceMatchResult {
  * AG-detector (socket + head) DOES match 'detector' in config
  */
 function mapDeviceTypeIdToConfigType(typeId: string): string {
-    // Map our internal type names to config type names
     switch (typeId) {
         case 'AG-detector':
-            return 'detector'; // Mounted socket+head matches config "detector"
+            return 'detector';
         case 'AG-socket':
-            return 'AG-socket'; // Standalone socket doesn't match anything in standard config
+            return 'AG-socket'; // Standalone socket doesn't match anything
         default:
             return typeId; // mcp, sounder, etc. match directly
     }
@@ -227,7 +401,6 @@ export function validateDeviceMatch(
     }
 
     // Build a map of placed devices by address (label)
-    // Special handling for AG-head: if labeled, find the parent socket since socket is the actual loop device
     const placedDeviceMap = new Map<string, PlacedDevice>();
     for (const device of placedDevices) {
         // Skip non-loop devices (panel, loop-driver)
@@ -236,14 +409,11 @@ export function validateDeviceMatch(
         }
         // Skip AG-head - we'll handle it via the socket
         if (device.typeId === 'AG-head') {
-            // If this head has a label, find the socket it's mounted on
             if (device.label && /^[A-Z]\.\d{3}\.\d{3}$/.test(device.label)) {
-                // Find the socket that has this head mounted
                 const parentSocket = placedDevices.find(d =>
                     d.typeId === 'AG-socket' && d.mountedDetectorId === device.instanceId
                 );
                 if (parentSocket) {
-                    // Use the socket but with the head's label for matching
                     placedDeviceMap.set(device.label, parentSocket);
                 }
             }
@@ -265,24 +435,19 @@ export function validateDeviceMatch(
     for (const [addr, configDevice] of configDeviceMap) {
         const placedDevice = placedDeviceMap.get(addr);
         if (!placedDevice) {
-            // Device address not found in placed devices
             missing.push(addr);
         } else {
-            // Determine effective type - AG-socket with mounted head becomes AG-detector
             let effectiveTypeId = placedDevice.typeId;
             if (placedDevice.typeId === 'AG-socket' && placedDevice.mountedDetectorId) {
                 effectiveTypeId = 'AG-detector';
             }
 
-            // Map to config type and store
             const placedType = mapDeviceTypeIdToConfigType(effectiveTypeId);
             placedTypes.set(addr, placedType);
 
-            // Check if type matches
             if (placedType === configDevice.type) {
                 matched.push(addr);
             } else {
-                // Address matches but type doesn't
                 typeMismatch.push(addr);
             }
         }
