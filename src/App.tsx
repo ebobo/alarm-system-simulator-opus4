@@ -670,7 +670,7 @@ function App() {
   // Handle export to Excel and SVG
   const handleExport = () => {
     try {
-      exportToExcel(currentProjectName, svgContent);
+      exportToExcel(currentProjectName, svgContent, placedDevices);
       // Small delay to prevent browser blocking second download
       setTimeout(() => {
         exportSVG(svgContent, currentProjectName);
@@ -1331,7 +1331,7 @@ function App() {
           }}
           onExcelBlob={() => {
             if (!svgContent) return null;
-            return generateExcelBlob(currentProjectName, svgContent);
+            return generateExcelBlob(currentProjectName, svgContent, placedDevices);
           }}
           isProjectSaved={!!currentProjectId}
         />

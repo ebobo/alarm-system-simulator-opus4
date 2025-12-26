@@ -3,9 +3,10 @@
 
 import * as XLSX from 'xlsx';
 import type { RoomType } from './floorPlanGenerator';
+import type { PlacedDevice, AGHeadFeature } from '../types/devices';
 
 // Device types for export
-type DeviceExportType = 'H/M Detector' | 'MCP' | 'Loop Sounder';
+type DeviceExportType = 'H/M Detector' | 'MCP' | 'Loop Sounder' | 'Input Unit' | 'Output Unit';
 
 interface DeviceListEntry {
     projectName: string;
@@ -13,6 +14,26 @@ interface DeviceListEntry {
     type: DeviceExportType;
     location: string;
     serialNumber: string; // Always empty for export
+    features: string;     // NEW: Features column for multi-function devices
+}
+
+/**
+ * Convert AGHeadFeature array to comma-separated string for export
+ * Format matches what the config tool expects: "Sounder, Beacon-R", etc.
+ */
+function featuresToString(features: AGHeadFeature[] | undefined): string {
+    if (!features || features.length === 0) return '';
+
+    return features.map(f => {
+        switch (f) {
+            case 'Sounder': return 'Sounder';
+            case 'BeaconR': return 'Beacon-R';
+            case 'BeaconW': return 'Beacon-W';
+            case 'CO': return 'CO';
+            case 'Voice': return 'Voice';
+            default: return f;
+        }
+    }).join(', ');
 }
 
 /**
@@ -94,9 +115,129 @@ function extractRoomsFromSVG(svgContent: string): { type: RoomType; label: strin
 }
 
 /**
- * Generate device list from room configuration and SVG
+ * Get location for a placed device by finding the room it's in from SVG
  */
-function generateDeviceList(
+function getDeviceLocation(device: PlacedDevice, svgContent: string): string {
+    // First try to parse the label for location info
+    if (device.label) {
+        // If label contains location info (e.g., "A.001.001 Office 1"), extract it
+        const labelParts = device.label.split(' ');
+        if (labelParts.length > 1) {
+            // Skip the address part (X.XXX.XXX), return the rest as location
+            const possibleLocation = labelParts.slice(1).join(' ');
+            if (possibleLocation && !possibleLocation.match(/^[A-Z]\.\d{3}\.\d{3}$/)) {
+                return possibleLocation;
+            }
+        }
+    }
+
+    // Fallback: Try to find which room the device is in based on coordinates
+    const rooms = extractRoomsFromSVG(svgContent);
+
+    // Parse room geometries from SVG to determine which room contains the device
+    const rectRegex = /<rect[^>]*data-room-id[^>]*>/g;
+    let rectMatch;
+
+    while ((rectMatch = rectRegex.exec(svgContent)) !== null) {
+        const rect = rectMatch[0];
+
+        const xMatch = rect.match(/x="([^"]+)"/);
+        const yMatch = rect.match(/y="([^"]+)"/);
+        const widthMatch = rect.match(/width="([^"]+)"/);
+        const heightMatch = rect.match(/height="([^"]+)"/);
+        const labelMatch = rect.match(/data-room-label="([^"]+)"/);
+
+        if (xMatch && yMatch && widthMatch && heightMatch && labelMatch) {
+            const rx = parseFloat(xMatch[1]);
+            const ry = parseFloat(yMatch[1]);
+            const rw = parseFloat(widthMatch[1]);
+            const rh = parseFloat(heightMatch[1]);
+
+            // Check if device is inside this room
+            if (device.x >= rx && device.x <= rx + rw &&
+                device.y >= ry && device.y <= ry + rh) {
+                return labelMatch[1];
+            }
+        }
+    }
+
+    // If still no location found, try first room or return Unknown
+    if (rooms.length > 0) {
+        return rooms[0].label;
+    }
+
+    return 'Unknown';
+}
+
+/**
+ * Generate device list from placed devices
+ * NEW: Uses actual placed devices with features instead of generating from rooms
+ */
+function generateDeviceListFromPlacedDevices(
+    projectName: string,
+    svgContent: string,
+    placedDevices: PlacedDevice[]
+): DeviceListEntry[] {
+    const devices: DeviceListEntry[] = [];
+
+    // Filter to only addressable loop devices (exclude panel and loop-driver)
+    const loopDevices = placedDevices.filter(d =>
+        d.typeId !== 'panel' &&
+        d.typeId !== 'loop-driver' &&
+        d.typeId !== 'AG-head' // Heads are part of sockets, handled separately
+    );
+
+    for (const device of loopDevices) {
+        // Determine device type for export
+        let type: DeviceExportType;
+        let features = '';
+
+        // For AG-socket with mounted detector, it becomes a detector
+        if (device.typeId === 'AG-socket') {
+            type = 'H/M Detector';
+
+            // Find mounted head to get its features
+            if (device.mountedDetectorId) {
+                const head = placedDevices.find(d => d.instanceId === device.mountedDetectorId);
+                if (head?.features) {
+                    features = featuresToString(head.features);
+                }
+            }
+        } else if (device.typeId === 'mcp') {
+            type = 'MCP';
+        } else if (device.typeId === 'sounder') {
+            type = 'Loop Sounder';
+        } else if (device.typeId === 'input-unit') {
+            type = 'Input Unit';
+        } else if (device.typeId === 'output-unit') {
+            type = 'Output Unit';
+        } else {
+            continue; // Skip unknown device types
+        }
+
+        // Get label - use device label or generate from address format
+        const deviceLabel = device.label || `A.001.${String(devices.length + 1).padStart(3, '0')}`;
+
+        // Get location
+        const location = getDeviceLocation(device, svgContent);
+
+        devices.push({
+            projectName,
+            deviceLabel,
+            type,
+            location,
+            serialNumber: '',
+            features,
+        });
+    }
+
+    return devices;
+}
+
+/**
+ * Generate device list from room configuration and SVG (legacy fallback)
+ */
+function generateDeviceListFromSVG(
     projectName: string,
     svgContent: string
 ): DeviceListEntry[] {
@@ -120,6 +261,7 @@ function generateDeviceList(
             type: 'H/M Detector',
             location: room.label,
             serialNumber: '',
+            features: '',  // No features in legacy mode
         });
     }
 
@@ -134,6 +276,7 @@ function generateDeviceList(
         type: 'MCP',
         location: publicAreaLabel,
         serialNumber: '',
+        features: '',
     });
 
     // Add Loop Sounder in public area
@@ -143,6 +286,7 @@ function generateDeviceList(
         type: 'Loop Sounder',
         location: publicAreaLabel,
         serialNumber: '',
+        features: '',
     });
 
     return devices;
@@ -158,10 +302,10 @@ function generateCEMatrix(devices: DeviceListEntry[]): {
     matrix: string[][];
 } {
     // Inputs: Detectors and MCPs
-    const inputs = devices.filter(d => d.type === 'H/M Detector' || d.type === 'MCP');
+    const inputs = devices.filter(d => d.type === 'H/M Detector' || d.type === 'MCP' || d.type === 'Input Unit');
 
     // Outputs: Sounders
-    const outputs = devices.filter(d => d.type === 'Loop Sounder');
+    const outputs = devices.filter(d => d.type === 'Loop Sounder' || d.type === 'Output Unit');
 
     // Create matrix - all X's for OR logic
     const matrix: string[][] = [];
@@ -177,24 +321,15 @@ function generateCEMatrix(devices: DeviceListEntry[]): {
 }
 
 /**
- * Export project data to Excel file with Device List and C&E Matrix sheets
+ * Create Excel workbook from device list and C&E matrix
  */
-export function exportToExcel(
-    projectName: string,
-    svgContent: string
-): void {
-    // Generate device list
-    const devices = generateDeviceList(projectName, svgContent);
-
-    // Generate C&E Matrix
-    const ceMatrix = generateCEMatrix(devices);
-
+function createWorkbook(devices: DeviceListEntry[], ceMatrix: { inputs: DeviceListEntry[]; outputs: DeviceListEntry[]; matrix: string[][] }): XLSX.WorkBook {
     // Create workbook
     const workbook = XLSX.utils.book_new();
 
     // === Sheet 1: Device List ===
     const deviceListData: (string | number)[][] = [
-        ['Project Name', 'Device Label', 'Type', 'Location', 'Display Text', 'Serial Number'],
+        ['Project Name', 'Device Label', 'Type', 'Location', 'Display Text', 'Serial Number', 'Features'],
     ];
 
     for (const device of devices) {
@@ -205,6 +340,7 @@ export function exportToExcel(
             device.location,
             `${device.deviceLabel} ${device.location}`, // Display Text
             device.serialNumber,
+            device.features,  // NEW: Features column
         ]);
     }
 
@@ -218,6 +354,7 @@ export function exportToExcel(
         { wch: 20 }, // Location
         { wch: 30 }, // Display Text
         { wch: 15 }, // Serial Number
+        { wch: 25 }, // Features
     ];
 
     XLSX.utils.book_append_sheet(workbook, deviceSheet, 'Device List');
@@ -250,6 +387,29 @@ export function exportToExcel(
     ceSheet['!cols'] = ceCols;
 
     XLSX.utils.book_append_sheet(workbook, ceSheet, 'C&E Matrix');
+
+    return workbook;
+}
+
+/**
+ * Export project data to Excel file with Device List and C&E Matrix sheets
+ * NEW: Accepts optional placedDevices to export actual devices with features
+ */
+export function exportToExcel(
+    projectName: string,
+    svgContent: string,
+    placedDevices?: PlacedDevice[]
+): void {
+    // Generate device list - use placed devices if provided, else fall back to SVG-based
+    const devices = placedDevices && placedDevices.length > 0
+        ? generateDeviceListFromPlacedDevices(projectName, svgContent, placedDevices)
+        : generateDeviceListFromSVG(projectName, svgContent);
+
+    // Generate C&E Matrix
+    const ceMatrix = generateCEMatrix(devices);
+
+    // Create workbook
+    const workbook = createWorkbook(devices, ceMatrix);
 
     // Generate filename with timestamp
     const timestamp = new Date().toISOString().slice(0, 10);
@@ -285,78 +445,23 @@ export function exportSVG(svgContent: string, projectName: string): void {
 
 /**
  * Generate Excel workbook as a Blob (for cloud upload without download)
+ * NEW: Accepts optional placedDevices to export actual devices with features
  */
 export function generateExcelBlob(
     projectName: string,
-    svgContent: string
+    svgContent: string,
+    placedDevices?: PlacedDevice[]
 ): Blob {
-    // Generate device list
-    const devices = generateDeviceList(projectName, svgContent);
+    // Generate device list - use placed devices if provided, else fall back to SVG-based
+    const devices = placedDevices && placedDevices.length > 0
+        ? generateDeviceListFromPlacedDevices(projectName, svgContent, placedDevices)
+        : generateDeviceListFromSVG(projectName, svgContent);
 
     // Generate C&E Matrix
     const ceMatrix = generateCEMatrix(devices);
 
     // Create workbook
-    const workbook = XLSX.utils.book_new();
-
-    // === Sheet 1: Device List ===
-    const deviceListData: (string | number)[][] = [
-        ['Project Name', 'Device Label', 'Type', 'Location', 'Display Text', 'Serial Number'],
-    ];
-
-    for (const device of devices) {
-        deviceListData.push([
-            device.projectName,
-            device.deviceLabel,
-            device.type,
-            device.location,
-            `${device.deviceLabel} ${device.location}`, // Display Text
-            device.serialNumber,
-        ]);
-    }
-
-    const deviceSheet = XLSX.utils.aoa_to_sheet(deviceListData);
-
-    // Set column widths
-    deviceSheet['!cols'] = [
-        { wch: 25 }, // Project Name
-        { wch: 15 }, // Device Label
-        { wch: 15 }, // Type
-        { wch: 20 }, // Location
-        { wch: 30 }, // Display Text
-        { wch: 15 }, // Serial Number
-    ];
-
-    XLSX.utils.book_append_sheet(workbook, deviceSheet, 'Device List');
-
-    // === Sheet 2: C&E Matrix ===
-    const ceData: string[][] = [];
-
-    // Header row - first cell empty, then input labels
-    const headerRow = ['Output \\ Input'];
-    for (const input of ceMatrix.inputs) {
-        headerRow.push(input.deviceLabel);
-    }
-    ceData.push(headerRow);
-
-    // Data rows - output label, then X marks
-    for (let i = 0; i < ceMatrix.outputs.length; i++) {
-        const output = ceMatrix.outputs[i];
-        const row = [output.deviceLabel];
-        row.push(...ceMatrix.matrix[i]);
-        ceData.push(row);
-    }
-
-    const ceSheet = XLSX.utils.aoa_to_sheet(ceData);
-
-    // Set column widths for C&E Matrix
-    const ceCols: { wch: number }[] = [{ wch: 15 }]; // Output column
-    for (const _ of ceMatrix.inputs) {
-        ceCols.push({ wch: 12 });
-    }
-    ceSheet['!cols'] = ceCols;
-
-    XLSX.utils.book_append_sheet(workbook, ceSheet, 'C&E Matrix');
+    const workbook = createWorkbook(devices, ceMatrix);
 
     // Write to array buffer and create blob
     const data = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
