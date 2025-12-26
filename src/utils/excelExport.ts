@@ -6,7 +6,7 @@ import type { RoomType } from './floorPlanGenerator';
 import type { PlacedDevice, AGHeadFeature } from '../types/devices';
 
 // Device types for export
-type DeviceExportType = 'H/M Detector' | 'MCP' | 'Loop Sounder' | 'Input Unit' | 'Output Unit';
+type DeviceExportType = 'H/S Detector' | 'MCP' | 'Loop Sounder' | 'Input Unit' | 'Output Unit';
 
 interface DeviceListEntry {
     projectName: string;
@@ -194,7 +194,7 @@ function generateDeviceListFromPlacedDevices(
 
         // For AG-socket with mounted detector, it becomes a detector
         if (device.typeId === 'AG-socket') {
-            type = 'H/M Detector';
+            type = 'H/S Detector';
 
             // Find mounted head to get its features
             if (device.mountedDetectorId) {
@@ -253,12 +253,12 @@ function generateDeviceListFromSVG(
         return label;
     };
 
-    // Add H/M Detector for each room
+    // Add H/S Detector for each room
     for (const room of rooms) {
         devices.push({
             projectName,
             deviceLabel: createLabel(),
-            type: 'H/M Detector',
+            type: 'H/S Detector',
             location: room.label,
             serialNumber: '',
             features: '',  // No features in legacy mode
@@ -302,7 +302,7 @@ function generateCEMatrix(devices: DeviceListEntry[]): {
     matrix: string[][];
 } {
     // Inputs: Detectors and MCPs
-    const inputs = devices.filter(d => d.type === 'H/M Detector' || d.type === 'MCP' || d.type === 'Input Unit');
+    const inputs = devices.filter(d => d.type === 'H/S Detector' || d.type === 'MCP' || d.type === 'Input Unit');
 
     // Outputs: Sounders
     const outputs = devices.filter(d => d.type === 'Loop Sounder' || d.type === 'Output Unit');
