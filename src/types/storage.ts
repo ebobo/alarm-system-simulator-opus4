@@ -2,6 +2,7 @@
 
 import type { RoomConfig } from '../utils/floorPlanGenerator';
 import type { PlacedDevice, Connection } from './devices';
+import type { FAConfig } from './faconfig';
 
 /**
  * Project list entry (metadata only, for sidebar display)
@@ -14,6 +15,11 @@ export interface ProjectListEntry {
 
 /**
  * Saved project structure for LocalStorage persistence
+ * 
+ * Storage info:
+ * - Uses browser localStorage (5-10MB limit depending on browser)
+ * - Persists until manually cleared or browser data is cleared
+ * - FAConfig is typically small (a few KB)
  */
 export interface SavedProject {
     version: 1;
@@ -24,4 +30,6 @@ export interface SavedProject {
     svgContent: string;           // Generated floor plan SVG
     placedDevices: PlacedDevice[];
     connections: Connection[];
+    faConfig?: FAConfig;          // Optional: uploaded .faconfig data
 }
+

@@ -250,6 +250,7 @@ function App() {
   const [configImportError, setConfigImportError] = useState<string | null>(null);
   const configInputRef = useRef<HTMLInputElement>(null);
   const [projectList, setProjectList] = useState<ProjectListEntry[]>([]);
+  const pendingConfigSaveRef = useRef(false);  // Flag to trigger auto-save after config upload
 
   // Panel power state (shared with PanelView via prop drilling)
   const [isPanelPoweredOn, setIsPanelPoweredOn] = useState(false);
@@ -419,6 +420,7 @@ function App() {
     svgContent,
     placedDevices,
     connections,
+    loadedConfig,
   });
 
   // Keep refs in sync with state
@@ -428,8 +430,30 @@ function App() {
       svgContent,
       placedDevices,
       connections,
+      loadedConfig,
     };
-  }, [config, svgContent, placedDevices, connections]);
+  }, [config, svgContent, placedDevices, connections, loadedConfig]);
+
+  // Auto-save after config file upload (triggered by pendingConfigSaveRef flag)
+  useEffect(() => {
+    if (pendingConfigSaveRef.current && loadedConfig && currentProjectId && currentProjectName) {
+      pendingConfigSaveRef.current = false;
+      // Use setTimeout to ensure latestStateRef is updated
+      setTimeout(() => {
+        saveProject({
+          id: currentProjectId,
+          name: currentProjectName,
+          config: latestStateRef.current.config,
+          svgContent: latestStateRef.current.svgContent,
+          placedDevices: latestStateRef.current.placedDevices,
+          connections: latestStateRef.current.connections,
+          faConfig: loadedConfig,
+        });
+        setSaveNotification('Config loaded & saved!');
+        setTimeout(() => setSaveNotification(null), 2000);
+      }, 0);
+    }
+  }, [loadedConfig, currentProjectId, currentProjectName]);
 
   // Configure drag sensors - split mouse and touch for better reliability
   const sensors = useSensors(
@@ -461,11 +485,14 @@ function App() {
       setConnections(savedProject.connections);
       setCurrentProjectId(savedProject.id);
       setCurrentProjectName(savedProject.name);
+      // Restore FAConfig if saved with project
+      setLoadedConfig(savedProject.faConfig ?? null);
     } else {
       // No saved projects - start with empty state
       setSvgContent('');
       setCurrentProjectId(null);
       setCurrentProjectName('');
+      setLoadedConfig(null);
     }
   }, []);
 
@@ -478,6 +505,7 @@ function App() {
     // Reset to new unsaved project
     setCurrentProjectId(null);
     setCurrentProjectName('New Project');
+    setLoadedConfig(null);  // Clear FAConfig for new project
   };
 
   // Handle importing an SVG floor plan
@@ -489,6 +517,7 @@ function App() {
     // Reset to new unsaved project
     setCurrentProjectId(null);
     setCurrentProjectName('Imported Floor Plan');
+    setLoadedConfig(null);  // Clear FAConfig for imported floor plan
     setSaveNotification('Floor plan imported!');
     setTimeout(() => setSaveNotification(null), 2000);
   };
@@ -503,6 +532,7 @@ function App() {
     // Reset to unsaved state
     setCurrentProjectId(null);
     setCurrentProjectName('New Project');
+    setLoadedConfig(null);  // Clear FAConfig when generating new floor plan
   };
 
   // Handle save button click
@@ -519,7 +549,7 @@ function App() {
   // Actually save the project with a name
   const doSaveProject = (id: string, name: string) => {
     try {
-      const { config: currentConfig, svgContent: currentSvg, placedDevices: currentDevices, connections: currentConnections } = latestStateRef.current;
+      const { config: currentConfig, svgContent: currentSvg, placedDevices: currentDevices, connections: currentConnections, loadedConfig: currentFAConfig } = latestStateRef.current;
       saveProject({
         id,
         name,
@@ -527,6 +557,7 @@ function App() {
         svgContent: currentSvg,
         placedDevices: currentDevices,
         connections: currentConnections,
+        faConfig: currentFAConfig ?? undefined,  // Persist FAConfig with project
       });
       setCurrentProjectId(id);
       setCurrentProjectName(name);
@@ -650,6 +681,7 @@ function App() {
           setConnections(mostRecent.connections);
           setCurrentProjectId(mostRecent.id);
           setCurrentProjectName(mostRecent.name);
+          setLoadedConfig(mostRecent.faConfig ?? null);
         }
       } else {
         // No projects left - set empty state
@@ -659,6 +691,7 @@ function App() {
         setConnections([]);
         setCurrentProjectId(null);
         setCurrentProjectName('');  // Empty name (no unsaved project)
+        setLoadedConfig(null);  // Clear FAConfig
       }
       setSelectedDeviceId(null);
     }
@@ -697,8 +730,13 @@ function App() {
 
       if (result.success) {
         setLoadedConfig(result.config);
-        setSaveNotification('Config loaded!');
-        setTimeout(() => setSaveNotification(null), 2000);
+        // If project is saved, trigger auto-save; otherwise just show "loaded"
+        if (currentProjectId && currentProjectName && currentProjectName !== 'New Project') {
+          pendingConfigSaveRef.current = true;  // Trigger auto-save via useEffect
+        } else {
+          setSaveNotification('Config loaded! Save project to persist.');
+          setTimeout(() => setSaveNotification(null), 3000);
+        }
       } else {
         setConfigImportError(result.error);
       }
@@ -723,6 +761,8 @@ function App() {
       setCurrentProjectId(project.id);
       setCurrentProjectName(project.name);
       setSelectedDeviceId(null);
+      // Restore FAConfig for this project (replaces any existing config)
+      setLoadedConfig(project.faConfig ?? null);
     }
   };
 
