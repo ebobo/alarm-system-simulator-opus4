@@ -1,9 +1,61 @@
 // Config Tab - displays configuration status and validation
 // Extracted from ConfigStatusSidebar for use in tabbed panel sidebar
 
-import type { FAConfig } from '../../types/faconfig';
+import type { FAConfig, FAConfigDevice } from '../../types/faconfig';
 import type { DeviceMatchResult } from '../../utils/faconfigParser';
 import { getConfigSummary } from '../../utils/faconfigParser';
+
+
+/**
+ * Get compact feature indicators from device functions (e.g., "+S" for sounder, "+SBr" for sounder+beacon)
+ * Only for detectors - sounders don't need feature indicators
+ * Uses fixed order: S, Br, Bw, C, V
+ */
+function getFeatureIndicator(device: FAConfigDevice | undefined): string {
+    if (!device) return '';
+    // Skip feature indicators for non-detectors
+    if (device.type.toLowerCase() !== 'detector') return '';
+
+    const fnTypes = device.functions.map(fn => fn.type);
+    const indicators: string[] = [];
+
+    // Check each feature in fixed order
+    if (fnTypes.includes('sounder')) indicators.push('S');
+    if (fnTypes.includes('beacon-red')) indicators.push('Br');
+    if (fnTypes.includes('beacon-white')) indicators.push('Bw');
+    if (fnTypes.includes('co-sensor')) indicators.push('C');
+    if (fnTypes.includes('voice')) indicators.push('V');
+
+    return indicators.length > 0 ? `+${indicators.join('')}` : '';
+}
+
+/**
+ * Shorten device type for compact display
+ */
+function getShortType(type: string): string {
+    switch (type.toLowerCase()) {
+        case 'detector': return 'det';
+        default: return type;
+    }
+}
+
+/**
+ * Get compact indicator for actual installed features
+ * Uses fixed order: S, Br, Bw, C, V
+ */
+function getActualFeatureIndicator(actualFeatures: string[] | undefined): string {
+    if (!actualFeatures || actualFeatures.length === 0) return '';
+    const indicators: string[] = [];
+
+    // Check each feature in fixed order
+    if (actualFeatures.includes('Sounder')) indicators.push('S');
+    if (actualFeatures.includes('BeaconR')) indicators.push('Br');
+    if (actualFeatures.includes('BeaconW')) indicators.push('Bw');
+    if (actualFeatures.includes('CO')) indicators.push('C');
+    if (actualFeatures.includes('Voice')) indicators.push('V');
+
+    return indicators.length > 0 ? `+${indicators.join('')}` : '';
+}
 
 interface ConfigTabProps {
     config: FAConfig | null;
@@ -103,7 +155,15 @@ export default function ConfigTab({
                                         </div>
                                         <div className="flex-1">
                                             <p className="text-sm font-medium text-white">Detectors</p>
-                                            <p className="text-xs text-slate-400">{summary.detectors} devices</p>
+                                            <p className="text-xs text-slate-400">
+                                                {summary.detectors} devices
+                                                {(summary.detectorsWithSounder > 0 || summary.detectorsWithBeacon > 0) && (
+                                                    <span className="text-slate-500">
+                                                        {summary.detectorsWithSounder > 0 && ` • ${summary.detectorsWithSounder} w/sounder`}
+                                                        {summary.detectorsWithBeacon > 0 && ` • ${summary.detectorsWithBeacon} w/beacon`}
+                                                    </span>
+                                                )}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -196,16 +256,25 @@ export default function ConfigTab({
                                     <span className="text-sm text-slate-300">Matched</span>
                                     <span className="text-sm text-green-400 font-medium ml-auto">{matchResult.matched.length}</span>
                                 </div>
-                                <div className={`flex items-center gap-2 ${matchResult.typeMismatch && matchResult.typeMismatch.length > 0 ? 'mb-2' : ''}`}>
-                                    <span className="text-red-400">✗</span>
-                                    <span className="text-sm text-slate-300">Missing</span>
-                                    <span className="text-sm text-red-400 font-medium ml-auto">{matchResult.missing.length}</span>
-                                </div>
+                                {matchResult.missing.length > 0 && (
+                                    <div className={`flex items-center gap-2 ${matchResult.typeMismatch && matchResult.typeMismatch.length > 0 ? 'mb-2' : ''}`}>
+                                        <span className="text-red-400">✗</span>
+                                        <span className="text-sm text-slate-300">Missing</span>
+                                        <span className="text-sm text-red-400 font-medium ml-auto">{matchResult.missing.length}</span>
+                                    </div>
+                                )}
                                 {matchResult.typeMismatch && matchResult.typeMismatch.length > 0 && (
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 mb-2">
                                         <span className="text-amber-400">⚠</span>
                                         <span className="text-sm text-slate-300">Wrong Type</span>
                                         <span className="text-sm text-amber-400 font-medium ml-auto">{matchResult.typeMismatch.length}</span>
+                                    </div>
+                                )}
+                                {matchResult.featureMismatch && matchResult.featureMismatch.length > 0 && (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-purple-400">◐</span>
+                                        <span className="text-sm text-slate-300">Missing Features</span>
+                                        <span className="text-sm text-purple-400 font-medium ml-auto">{matchResult.featureMismatch.length}</span>
                                     </div>
                                 )}
                             </div>
@@ -225,14 +294,18 @@ export default function ConfigTab({
                                         const location = device?.location || '—';
                                         const wantedType = device?.type || '—';
                                         const actualType = matchResult.placedTypes?.get(addr) || '—';
+                                        const features = getFeatureIndicator(device);
+                                        const actualFeats = getActualFeatureIndicator(matchResult.featureDetails?.get(addr)?.actual);
                                         return (
                                             <div key={addr} className="flex text-xs py-0.5 px-1 hover:bg-slate-800/50 rounded">
                                                 <span className="w-5 text-green-400">✓</span>
                                                 <span className="w-20 text-green-300 font-mono">{addr}</span>
-                                                <span className="w-32 truncate" title={`${wantedType}/${actualType}`}>
-                                                    <span className="text-slate-400">{wantedType}</span>
+                                                <span className="w-32 truncate" title={`${wantedType}${features}/${actualType}${actualFeats}`}>
+                                                    <span className="text-slate-400">{getShortType(wantedType)}</span>
+                                                    {features && <span className="text-cyan-400">{features}</span>}
                                                     <span className="text-slate-600">/</span>
-                                                    <span className="text-green-400">{actualType}</span>
+                                                    <span className="text-green-400">{getShortType(actualType)}</span>
+                                                    {actualFeats && <span className="text-green-300">{actualFeats}</span>}
                                                 </span>
                                                 <span className="flex-1 text-slate-400 truncate" title={location}>
                                                     {location}
@@ -246,14 +319,16 @@ export default function ConfigTab({
                                         const location = device?.location || '—';
                                         const wantedType = device?.type || '—';
                                         const actualType = matchResult.placedTypes?.get(addr) || '—';
+                                        const features = getFeatureIndicator(device);
                                         return (
                                             <div key={addr} className="flex text-xs py-0.5 px-1 hover:bg-slate-800/50 rounded">
                                                 <span className="w-5 text-amber-400">⚠</span>
                                                 <span className="w-20 text-amber-300 font-mono">{addr}</span>
-                                                <span className="w-32 truncate" title={`${wantedType}/${actualType}`}>
-                                                    <span className="text-slate-400">{wantedType}</span>
+                                                <span className="w-32 truncate" title={`${wantedType}${features}/${actualType}`}>
+                                                    <span className="text-slate-400">{getShortType(wantedType)}</span>
+                                                    {features && <span className="text-cyan-400">{features}</span>}
                                                     <span className="text-slate-600">/</span>
-                                                    <span className="text-amber-400">{actualType}</span>
+                                                    <span className="text-amber-400">{getShortType(actualType)}</span>
                                                 </span>
                                                 <span className="flex-1 text-slate-400 truncate" title={location}>
                                                     {location}
@@ -266,14 +341,45 @@ export default function ConfigTab({
                                         const device = config.devices.find(d => d.address === addr);
                                         const location = device?.location || '—';
                                         const wantedType = device?.type || '—';
+                                        const features = getFeatureIndicator(device);
                                         return (
                                             <div key={addr} className="flex text-xs py-0.5 px-1 hover:bg-slate-800/50 rounded">
                                                 <span className="w-5 text-red-400">✗</span>
                                                 <span className="w-20 text-red-300 font-mono">{addr}</span>
-                                                <span className="w-32 truncate" title={`${wantedType}/—`}>
-                                                    <span className="text-slate-400">{wantedType}</span>
+                                                <span className="w-32 truncate" title={`${wantedType}${features}/—`}>
+                                                    <span className="text-slate-400">{getShortType(wantedType)}</span>
+                                                    {features && <span className="text-cyan-400">{features}</span>}
                                                     <span className="text-slate-600">/</span>
                                                     <span className="text-red-400">—</span>
+                                                </span>
+                                                <span className="flex-1 text-slate-400 truncate" title={location}>
+                                                    {location}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                    {/* Feature mismatch devices */}
+                                    {matchResult.featureMismatch && matchResult.featureMismatch.map(addr => {
+                                        const device = config.devices.find(d => d.address === addr);
+                                        const location = device?.location || '—';
+                                        const wantedType = device?.type || '—';
+                                        const actualType = matchResult.placedTypes?.get(addr) || '—';
+                                        const reqFeatures = getFeatureIndicator(device);
+                                        const featureData = matchResult.featureDetails?.get(addr);
+                                        const actualFeats = getActualFeatureIndicator(featureData?.actual);
+                                        const featureTooltip = featureData
+                                            ? `Required: ${featureData.required.join(', ') || 'none'}\nActual: ${featureData.actual.join(', ') || 'none'}`
+                                            : '';
+                                        return (
+                                            <div key={addr} className="flex text-xs py-0.5 px-1 hover:bg-slate-800/50 rounded" title={featureTooltip}>
+                                                <span className="w-5 text-purple-400">◐</span>
+                                                <span className="w-20 text-purple-300 font-mono">{addr}</span>
+                                                <span className="w-32 truncate" title={`${wantedType}${reqFeatures}/${actualType}${actualFeats}`}>
+                                                    <span className="text-slate-400">{getShortType(wantedType)}</span>
+                                                    {reqFeatures && <span className="text-cyan-400">{reqFeatures}</span>}
+                                                    <span className="text-slate-600">/</span>
+                                                    <span className="text-purple-400">{getShortType(actualType)}</span>
+                                                    {actualFeats && <span className="text-purple-300">{actualFeats}</span>}
                                                 </span>
                                                 <span className="flex-1 text-slate-400 truncate" title={location}>
                                                     {location}

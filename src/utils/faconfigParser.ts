@@ -238,6 +238,8 @@ function validateDevice(device: unknown, index: number): { valid: true } | { val
 
 /**
  * Get summary statistics from a config (v2.0 aware)
+ * Counts physical devices by their primary type, not by individual functions
+ * Also counts additional features on detectors
  */
 export function getConfigSummary(config: FAConfig): {
     totalDevices: number;
@@ -251,10 +253,15 @@ export function getConfigSummary(config: FAConfig): {
     detectionZones: number;
     alarmZones: number;
     ceRules: number;
+    // Feature counts for detectors
+    detectorsWithSounder: number;
+    detectorsWithBeacon: number;
+    detectorsWithCO: number;
+    detectorsWithVoice: number;
 } {
     const devices = config.devices;
 
-    // Count functions by type
+    // Count physical devices by their primary type
     let detectors = 0;
     let mcps = 0;
     let sounders = 0;
@@ -263,18 +270,39 @@ export function getConfigSummary(config: FAConfig): {
     let voice = 0;
     let totalFunctions = 0;
 
+    // Feature counts for detectors
+    let detectorsWithSounder = 0;
+    let detectorsWithBeacon = 0;
+    let detectorsWithCO = 0;
+    let detectorsWithVoice = 0;
+
     for (const device of devices) {
-        for (const fn of device.functions) {
-            totalFunctions++;
-            switch (fn.type) {
-                case 'detector': detectors++; break;
-                case 'mcp': mcps++; break;
-                case 'sounder': sounders++; break;
-                case 'beacon-red':
-                case 'beacon-white': beacons++; break;
-                case 'co-sensor': coSensors++; break;
-                case 'voice': voice++; break;
-            }
+        // Count total functions (for reference)
+        totalFunctions += device.functions.length;
+
+        // Count by primary device type (not by functions)
+        const type = device.type.toLowerCase();
+        switch (type) {
+            case 'detector':
+                detectors++;
+                // Count additional features for this detector
+                for (const fn of device.functions) {
+                    switch (fn.type) {
+                        case 'sounder': detectorsWithSounder++; break;
+                        case 'beacon-red':
+                        case 'beacon-white': detectorsWithBeacon++; break;
+                        case 'co-sensor': detectorsWithCO++; break;
+                        case 'voice': detectorsWithVoice++; break;
+                    }
+                }
+                break;
+            case 'mcp': mcps++; break;
+            case 'sounder': sounders++; break;
+            case 'beacon':
+            case 'beacon-red':
+            case 'beacon-white': beacons++; break;
+            case 'co-sensor': coSensors++; break;
+            case 'voice': voice++; break;
         }
     }
 
@@ -290,6 +318,10 @@ export function getConfigSummary(config: FAConfig): {
         detectionZones: config.zones.detection.length,
         alarmZones: config.zones.alarm.length,
         ceRules: config.causeEffect.length,
+        detectorsWithSounder,
+        detectorsWithBeacon,
+        detectorsWithCO,
+        detectorsWithVoice,
     };
 }
 
@@ -363,11 +395,13 @@ export function hasOutputFunction(device: FAConfigDevice): boolean {
  */
 export interface DeviceMatchResult {
     valid: boolean;
-    matched: string[];              // Device addresses that match (address + type)
+    matched: string[];              // Device addresses that match (address + type + features)
     missing: string[];              // Config devices not found in placed devices
     extra: string[];                // Placed devices not in config
     typeMismatch: string[];         // Devices where address matches but type doesn't
+    featureMismatch: string[];      // Devices where type matches but features don't
     placedTypes: Map<string, string>; // Map of address to actual placed device typeId
+    featureDetails: Map<string, { required: string[]; actual: string[] }>; // Feature comparison per device
 }
 
 /**
@@ -401,27 +435,43 @@ export function validateDeviceMatch(
     }
 
     // Build a map of placed devices by address (label)
-    const placedDeviceMap = new Map<string, PlacedDevice>();
+    // Also include the mounted head for feature matching
+    const placedDeviceMap = new Map<string, { socket: PlacedDevice; head?: PlacedDevice }>();
+
+    // First pass: Index sockets
     for (const device of placedDevices) {
-        // Skip non-loop devices (panel, loop-driver)
-        if (device.typeId === 'panel' || device.typeId === 'loop-driver') {
+        if (device.typeId === 'panel' || device.typeId === 'loop-driver' || device.typeId === 'AG-head') {
             continue;
         }
-        // Skip AG-head - we'll handle it via the socket
-        if (device.typeId === 'AG-head') {
-            if (device.label && /^[A-Z]\.\d{3}\.\d{3}$/.test(device.label)) {
-                const parentSocket = placedDevices.find(d =>
-                    d.typeId === 'AG-socket' && d.mountedDetectorId === device.instanceId
-                );
-                if (parentSocket) {
-                    placedDeviceMap.set(device.label, parentSocket);
-                }
-            }
-            continue;
-        }
-        // Use the device's label if it looks like an address
         if (device.label && /^[A-Z]\.\d{3}\.\d{3}$/.test(device.label)) {
-            placedDeviceMap.set(device.label, device);
+            placedDeviceMap.set(device.label, { socket: device });
+        }
+    }
+
+    // Second pass: Associate heads (either by finding socket or updating map)
+    for (const device of placedDevices) {
+        if (device.typeId !== 'AG-head') continue;
+
+        // Try to finding by label first (if label matches socket)
+        if (device.label && placedDeviceMap.has(device.label)) {
+            const entry = placedDeviceMap.get(device.label)!;
+            // Verify this head belongs to this socket
+            if (entry.socket.mountedDetectorId === device.instanceId) {
+                entry.head = device;
+                continue;
+            }
+        }
+
+        // Fallback: find parent socket if label mismatch or not found
+        const parentSocket = placedDevices.find(d =>
+            d.typeId === 'AG-socket' && d.mountedDetectorId === device.instanceId
+        );
+
+        if (parentSocket && parentSocket.label) {
+            // Update existing entry or create new if socket wasn't indexed (unlikely if loop valid)
+            const entry = placedDeviceMap.get(parentSocket.label) || { socket: parentSocket };
+            entry.head = device;
+            placedDeviceMap.set(parentSocket.label, entry);
         }
     }
 
@@ -429,14 +479,41 @@ export function validateDeviceMatch(
     const missing: string[] = [];
     const extra: string[] = [];
     const typeMismatch: string[] = [];
+    const featureMismatch: string[] = [];
     const placedTypes = new Map<string, string>();
+    const featureDetails = new Map<string, { required: string[]; actual: string[] }>();
+
+    // Helper: Map config function type to PlacedDevice feature name
+    const mapFunctionToFeature = (fnType: string): string | null => {
+        switch (fnType) {
+            case 'sounder': return 'Sounder';
+            case 'beacon-red': return 'BeaconR';
+            case 'beacon-white': return 'BeaconW';
+            case 'co-sensor': return 'CO';
+            case 'voice': return 'Voice';
+            default: return null;
+        }
+    };
+
+    // Helper: Get required features from config device functions
+    const getRequiredFeatures = (configDevice: FAConfigDevice): string[] => {
+        const features: string[] = [];
+        for (const fn of configDevice.functions) {
+            const feature = mapFunctionToFeature(fn.type);
+            if (feature) features.push(feature);
+        }
+        return features.sort();
+    };
 
     // Check each config device
     for (const [addr, configDevice] of configDeviceMap) {
-        const placedDevice = placedDeviceMap.get(addr);
-        if (!placedDevice) {
+        const placedEntry = placedDeviceMap.get(addr);
+        if (!placedEntry) {
             missing.push(addr);
         } else {
+            const placedDevice = placedEntry.socket;
+            const mountedHead = placedEntry.head;
+
             let effectiveTypeId = placedDevice.typeId;
             if (placedDevice.typeId === 'AG-socket' && placedDevice.mountedDetectorId) {
                 effectiveTypeId = 'AG-detector';
@@ -445,29 +522,52 @@ export function validateDeviceMatch(
             const placedType = mapDeviceTypeIdToConfigType(effectiveTypeId);
             placedTypes.set(addr, placedType);
 
-            if (placedType === configDevice.type) {
-                matched.push(addr);
-            } else {
+            if (placedType !== configDevice.type) {
                 typeMismatch.push(addr);
+            } else {
+                // Type matches - now check features for detectors
+                if (configDevice.type === 'detector' && mountedHead) {
+                    const requiredFeatures = getRequiredFeatures(configDevice);
+                    const actualFeatures = (mountedHead.features || []).map(f => f as string).sort();
+
+                    // Always store feature details for detectors (for UI display)
+                    featureDetails.set(addr, { required: requiredFeatures, actual: actualFeatures });
+
+                    // Check if all required features are present
+                    const missingFeatures = requiredFeatures.filter(f => !actualFeatures.includes(f));
+                    if (missingFeatures.length > 0) {
+                        featureMismatch.push(addr);
+                    } else {
+                        matched.push(addr);
+                    }
+                } else if (configDevice.type === 'detector') {
+                    // Detector without mounted head - still record empty features
+                    featureDetails.set(addr, { required: getRequiredFeatures(configDevice), actual: [] });
+                    matched.push(addr);
+                } else {
+                    matched.push(addr);
+                }
             }
         }
     }
 
     // Find extra devices (placed but not in config)
-    for (const [addr, device] of placedDeviceMap) {
+    for (const [addr, entry] of placedDeviceMap) {
         if (!configDeviceMap.has(addr)) {
             extra.push(addr);
-            placedTypes.set(addr, device.typeId);
+            placedTypes.set(addr, entry.socket.typeId);
         }
     }
 
     return {
-        valid: missing.length === 0 && typeMismatch.length === 0,
+        valid: missing.length === 0 && typeMismatch.length === 0 && featureMismatch.length === 0,
         matched,
         missing,
         extra,
         typeMismatch,
-        placedTypes
+        featureMismatch,
+        placedTypes,
+        featureDetails
     };
 }
 
